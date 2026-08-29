@@ -38,4 +38,36 @@ else
   exit 1
 fi
 
+# The installer live root must keep the ownership the OS image assigns. A
+# recursive chown to the build user or an unprivileged mksquashfs both flatten
+# ownership to the runner uid (1001) and silently pack /etc/shadow empty, so
+# the staging logic must be privileged and validated after packing.
+iso_build="$project_dir/scripts/build-iso.sh"
+if rg -n 'chown -R' "$iso_build" "$project_dir/scripts/build-os.sh"; then
+  echo "OS/installer roots must not be recursively chowned to the build user" >&2
+  exit 1
+fi
+if ! rg -q 'sudo mksquashfs' "$iso_build"; then
+  echo "mksquashfs must run with privileges so privileged files and ownership are preserved" >&2
+  exit 1
+fi
+if ! rg -q 'squashfs\.sh' "$iso_build"; then
+  echo "build-iso.sh must validate the squashfs after packing" >&2
+  exit 1
+fi
+for pattern in 'vmlinuz-\*' 'initrd\.img-\*'; do
+  if ! rg -q "resolve_single_boot_artifact.*'$pattern'|'$pattern'" "$iso_build"; then
+    echo "build-iso.sh must resolve the $pattern boot artifact deterministically" >&2
+    exit 1
+  fi
+done
+if rg -q 'sort +\|\s*tail|tail\s+-n\s*1' "$iso_build"; then
+  echo "boot artifact discovery must not use sort|tail, which silently returns empty or ambiguous matches" >&2
+  exit 1
+fi
+squashfs_test="$project_dir/tests/integration/squashfs.sh"
+[[ -x "$squashfs_test" ]] || { echo "squashfs regression test is missing or not executable: $squashfs_test" >&2; exit 1; }
+rg -q 'etc/shadow' "$squashfs_test" || { echo "squashfs regression test must assert presence of /etc/shadow" >&2; exit 1; }
+rg -q 'etc/gshadow' "$squashfs_test" || { echo "squashfs regression test must assert presence of /etc/gshadow" >&2; exit 1; }
+
 echo "Repository invariants pass."
