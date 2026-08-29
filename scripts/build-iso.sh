@@ -73,7 +73,10 @@ sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_di
 sudo install -Dm755 "$project_dir/target/release/dead-rose-installer" "$installer_root/usr/lib/dead-rose/dead-rose-installer"
 sudo install -Dm644 "$project_dir/os/systemd/dead-rose-installer.service" "$installer_root/usr/lib/systemd/system/dead-rose-installer.service"
 sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc/systemd/system/graphical.target.wants"
-zstd -dc "$raw.zst" | sudo tee "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw" >/dev/null
+# Preserve zero-filled regions as holes. Piping through tee materializes the
+# nominal 25 GiB disk image and can exhaust the CI runner even though the raw
+# image is sparse.
+sudo zstd --decompress --force --sparse "$raw.zst" -o "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw"
 sudo cp "$raw.sha256" "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.sha256"
 sudo ln -sf /usr/lib/systemd/system/dead-rose-installer.service "$installer_root/etc/systemd/system/graphical.target.wants/dead-rose-installer.service"
 

@@ -48,6 +48,10 @@ if rg -n 'chown -R' "$iso_build" "$project_dir/scripts/build-os.sh"; then
   echo "OS/installer roots must not be recursively chowned to the build user" >&2
   exit 1
 fi
+if rg -q 'zstd .*\|.*tee' "$iso_build" || ! rg -q 'zstd .*--sparse' "$iso_build"; then
+  echo "the embedded raw image must be decompressed sparsely instead of materialized through tee" >&2
+  exit 1
+fi
 if ! rg -q 'sudo mksquashfs' "$iso_build"; then
   echo "mksquashfs must run with privileges so privileged files and ownership are preserved" >&2
   exit 1

@@ -43,9 +43,13 @@ jobs:
         run: ./dr iso
 
       - name: Print build contents and sizes
+        continue-on-error: true
         run: |
           set -euo pipefail
-          du -ah build | sort -h
+          # mkosi creates root-owned paths. This is diagnostic only, so keep
+          # it from blocking ISO verification/upload and limit log volume.
+          sudo du -ahx build | sort -h | tail -n 100
+          df -h .
 
       - name: Verify installer ISO
         id: installer
