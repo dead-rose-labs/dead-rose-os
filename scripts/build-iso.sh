@@ -7,8 +7,8 @@ iso="$project_dir/build/dead-rose-os-${version}-amd64.iso"
 [[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
 mkdir -p "$project_dir/build/iso-root/live" "$project_dir/build/logs"
 cd "$project_dir"
-pnpm install --frozen-lockfile
-pnpm --filter @dead-rose/installer build
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter @dead-rose/installer build
 cargo build --release --locked -p dead-rose-installer
 mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_dir/build/logs/mkosi-installer.log"
 install -Dm755 "$project_dir/target/release/dead-rose-installer" "$project_dir/build/installer-root/usr/lib/dead-rose/dead-rose-installer"

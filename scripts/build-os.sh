@@ -5,8 +5,8 @@ version="$(tr -d '[:space:]' < "$project_dir/VERSION")"
 output="$project_dir/build/dead-rose-os-${version}-amd64.raw"
 mkdir -p "$project_dir/build/logs"
 cd "$project_dir"
-pnpm install --frozen-lockfile
-pnpm build
+corepack pnpm install --frozen-lockfile
+corepack pnpm build
 cargo build --release --locked -p dead-rose-core -p dead-rose-shell
 install -Dm755 target/release/dead-rose-core os/mkosi.extra/usr/lib/dead-rose/dead-rose-core
 install -Dm755 target/release/dead-rose-shell os/mkosi.extra/usr/lib/dead-rose/dead-rose-shell

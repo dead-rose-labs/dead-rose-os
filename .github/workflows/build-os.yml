@@ -1,0 +1,81 @@
+name: Build Dead Rose OS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer-iso:
+    runs-on: ubuntu-26.04
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Print runner information
+        run: |
+          set -euo pipefail
+          uname -a
+          uname -m
+          cat /etc/os-release
+
+      - name: Print available disk space
+        run: |
+          set -euo pipefail
+          df -h
+          lsblk
+
+      - name: Bootstrap build environment
+        run: ./dr bootstrap --ci
+
+      - name: Run repository quality checks
+        run: ./dr test
+
+      - name: Build OS image
+        run: ./dr build
+
+      - name: Build installer ISO
+        run: ./dr iso
+
+      - name: Print build contents and sizes
+        run: |
+          set -euo pipefail
+          du -ah build | sort -h
+
+      - name: Verify installer ISO
+        id: installer
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          iso="build/dead-rose-os-${version}-amd64.iso"
+          checksum="${iso}.sha256"
+
+          if [[ ! -s "$iso" ]]; then
+            echo "Expected installer ISO was not produced: $iso" >&2
+            exit 1
+          fi
+
+          if [[ ! -s "$checksum" ]]; then
+            echo "Expected installer checksum was not produced: $checksum" >&2
+            exit 1
+          fi
+
+          sha256sum --check "$checksum"
+          echo "iso=$iso" >> "$GITHUB_OUTPUT"
+          echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
+
+      - name: Upload installer ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: dead-rose-os-installer-${{ github.sha }}
+          path: |
+            ${{ steps.installer.outputs.iso }}
+            ${{ steps.installer.outputs.checksum }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0

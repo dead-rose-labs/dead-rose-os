@@ -3,9 +3,12 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 command="${1:-help}"
+if [[ "$#" -gt 0 ]]; then
+  shift
+fi
 
 case "$command" in
-  bootstrap) exec "$project_dir/scripts/bootstrap-builder.sh" ;;
+  bootstrap) exec "$project_dir/scripts/bootstrap-builder.sh" "$@" ;;
   build) exec "$project_dir/scripts/build-os.sh" ;;
   iso) exec "$project_dir/scripts/build-iso.sh" ;;
   vm) exec "$project_dir/scripts/run-vm.sh" ;;
