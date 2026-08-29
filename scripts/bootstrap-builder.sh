@@ -34,7 +34,7 @@ fi
 command -v corepack >/dev/null || { echo "MISSING corepack" >&2; exit 1; }
 command -v rustup >/dev/null || { echo "MISSING rustup" >&2; exit 1; }
 corepack pnpm --version
-rustup toolchain install 1.93.0 --profile minimal --component clippy rustfmt --no-self-update
+rustup toolchain install 1.93.0 --profile minimal --component clippy --component rustfmt --no-self-update
 corepack pnpm --dir "$project_dir" install --frozen-lockfile
 
 missing=0
