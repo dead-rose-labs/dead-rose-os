@@ -62,6 +62,16 @@ for pattern in 'vmlinuz-\*' 'initrd\.img-\*'; do
     exit 1
   fi
 done
+if ! rg -q 'sudo find .*search_root' "$iso_build"; then
+  echo "boot artifact discovery must be privileged because mkosi protects Ubuntu boot directories" >&2
+  exit 1
+fi
+for artifact in kernel initrd; do
+  if ! rg -q "sudo install .*\\\$$artifact" "$iso_build"; then
+    echo "the $artifact must be copied from the privileged installer root with sudo install" >&2
+    exit 1
+  fi
+done
 if rg -q 'sort +\|\s*tail|tail\s+-n\s*1' "$iso_build"; then
   echo "boot artifact discovery must not use sort|tail, which silently returns empty or ambiguous matches" >&2
   exit 1

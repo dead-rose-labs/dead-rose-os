@@ -20,6 +20,12 @@ require_regular_file() {
   [[ -f "$path" ]] || fatal "$label is not a present regular file: $path"
 }
 
+require_privileged_regular_file() {
+  local path="$1" label="$2"
+  [[ -n "$path" ]] || fatal "$label variable is empty"
+  sudo test -f "$path" || fatal "$label is not a present regular file: $path"
+}
+
 # Ubuntu/Debian policy: /etc/shadow and /etc/gshadow must be regular files owned
 # by root:shadow (gid 42) with mode 0640. systemd-sysusers creates them from
 # scratch with mode 0000 during rootfs construction when no package ships them,
@@ -50,7 +56,10 @@ resolve_single_boot_artifact() {
   if [[ ! -d "$search_root" ]]; then
     fatal "no $label sources: directory does not exist: $search_root"
   fi
-  mapfile -t candidates < <(find "$search_root" -name "$pattern" -type f | LC_ALL=C sort)
+  # mkosi builds the root as root, and Ubuntu's systemd-boot integration keeps
+  # kernel artifacts below protected /boot/ubuntu directories. Discover them
+  # with the same privilege used to build and pack the image.
+  mapfile -t candidates < <(sudo find "$search_root" -name "$pattern" -type f | LC_ALL=C sort)
   case "${#candidates[@]}" in
     0) fatal "no $label matching '$pattern' under $search_root; install a kernel/initrd in the installer image" ;;
     1) ;;
@@ -106,10 +115,10 @@ kernel="$(resolve_single_boot_artifact kernel 'vmlinuz-*' "$installer_root/boot"
 initrd="$(resolve_single_boot_artifact initramfs 'initrd.img-*' "$installer_root/boot")"
 echo "ISO kernel: $kernel"
 echo "ISO initrd: $initrd"
-require_regular_file "$kernel" "kernel"
-require_regular_file "$initrd" "initramfs"
-cp "$kernel" "$iso_live/vmlinuz"
-cp "$initrd" "$iso_live/initrd"
+require_privileged_regular_file "$kernel" "kernel"
+require_privileged_regular_file "$initrd" "initramfs"
+sudo install -m0644 "$kernel" "$iso_live/vmlinuz"
+sudo install -m0644 "$initrd" "$iso_live/initrd"
 
 efi_dir="$project_dir/build/efi/EFI/BOOT"
 efi_binary="$efi_dir/BOOTX64.EFI"
