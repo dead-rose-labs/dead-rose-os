@@ -4,6 +4,7 @@ project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 version="$(tr -d '[:space:]' < "$project_dir/VERSION")"
 raw="$project_dir/build/dead-rose-os-${version}-amd64.raw"
 iso="$project_dir/build/dead-rose-os-${version}-amd64.iso"
+installer_root="$project_dir/build/installer-root"
 [[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
 mkdir -p "$project_dir/build/iso-root/live" "$project_dir/build/logs"
 cd "$project_dir"
@@ -11,7 +12,8 @@ mkosi --directory "$project_dir/os/installer" summary
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @dead-rose/installer build
 cargo build --release --locked -p dead-rose-installer
-mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_dir/build/logs/mkosi-installer.log"
+sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_dir/build/logs/mkosi-installer.log"
+sudo chown -R -- "$(id -u):$(id -g)" "$installer_root"
 install -Dm755 "$project_dir/target/release/dead-rose-installer" "$project_dir/build/installer-root/usr/lib/dead-rose/dead-rose-installer"
 install -Dm644 "$project_dir/os/systemd/dead-rose-installer.service" "$project_dir/build/installer-root/usr/lib/systemd/system/dead-rose-installer.service"
 mkdir -p "$project_dir/build/installer-root/usr/lib/dead-rose-installer" "$project_dir/build/installer-root/etc/systemd/system/graphical.target.wants"

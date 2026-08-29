@@ -26,6 +26,7 @@ ln -sf /usr/lib/systemd/system/dead-rose-core.service os/mkosi.extra/etc/systemd
 ln -sf /usr/lib/systemd/system/dead-rose-graphical.service os/mkosi.extra/etc/systemd/system/graphical.target.wants/dead-rose-graphical.service
 ln -sf '/usr/lib/systemd/system/var-lib-dead\x2drose.mount' 'os/mkosi.extra/etc/systemd/system/local-fs.target.wants/var-lib-dead\x2drose.mount'
 ln -sf /usr/share/plymouth/themes/dead-rose/dead-rose.plymouth os/mkosi.extra/usr/share/plymouth/themes/default.plymouth
-mkosi --directory os --output-directory "$output_directory" --output "$output_name" build 2>&1 | tee "$project_dir/build/logs/mkosi.log"
+sudo mkosi --directory os --output-directory "$output_directory" --output "$output_name" build 2>&1 | tee "$project_dir/build/logs/mkosi.log"
+sudo chown -- "$(id -u):$(id -g)" "$output"
 sha256sum "$output" > "$output.sha256"
 zstd -T0 -19 --force "$output" -o "$output.zst"
