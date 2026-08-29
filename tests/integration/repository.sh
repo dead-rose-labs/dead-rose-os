@@ -78,6 +78,10 @@ if rg -q 'resolve_single_boot_artifact' "$iso_build"; then
   echo "build-iso.sh must use mkosi's split initrd instead of searching the image root" >&2
   exit 1
 fi
+if rg -q '^[[:space:]]*(sudo[[:space:]]+)?lsinitramfs([[:space:]]|$)' "$iso_build"; then
+  echo "build-iso.sh must not inspect mkosi's composite initrd with lsinitramfs" >&2
+  exit 1
+fi
 
 grub_config="$project_dir/os/installer/grub.cfg"
 grub_bootstrap="$project_dir/os/installer/grub-bootstrap.cfg"

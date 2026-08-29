@@ -52,28 +52,6 @@ assert_shadow_policy() {
   echo "shadow policy OK: /etc/shadow and /etc/gshadow are root:shadow (0:42) 0640 in $root"
 }
 
-assert_initrd_contents() {
-  local initrd="${1:?initrd}"
-  local listing
-
-  listing="$(sudo lsinitramfs "$initrd")" || fatal "could not inspect initramfs: $initrd"
-  for path in \
-    usr/lib/dead-rose-initrd/mount-live-root \
-    usr/lib/systemd/system/dead-rose-live-root.service \
-    usr/lib/systemd/system/initrd-root-fs.target.d/dead-rose-live-root.conf \
-    usr/bin/bash \
-    usr/bin/mkdir \
-    usr/bin/mount \
-    usr/bin/sleep \
-    usr/bin/udevadm; do
-    grep -Fxq "$path" <<<"$listing" || fatal "initramfs is missing required path: /$path"
-  done
-  for module in isofs.ko loop.ko squashfs.ko; do
-    grep -Eq "/${module}(\.(gz|xz|zst))?$" <<<"$listing" || fatal "initramfs is missing required kernel module: $module"
-  done
-  echo "initramfs contents OK: Dead Rose live-root unit and tools are present"
-}
-
 [[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
 mkdir -p "$iso_live" "$project_dir/build/logs"
 cd "$project_dir"
@@ -128,7 +106,11 @@ echo "ISO kernel: $installer_kernel"
 echo "ISO initrd: $installer_initrd"
 require_privileged_regular_file "$installer_kernel" "kernel"
 require_privileged_regular_file "$installer_initrd" "initramfs"
-assert_initrd_contents "$installer_initrd"
+# mkosi appends separately compressed microcode and kernel-module archives to
+# the base initrd. Ubuntu's lsinitramfs cannot inspect more than one compressed
+# cpio archive and reports the valid composite image as "unsupported format".
+# The mandatory QEMU smoke test below validates the only useful contract here:
+# that the complete initrd mounts the live root and starts the installer.
 sudo install -m0644 "$installer_kernel" "$iso_live/vmlinuz"
 sudo install -m0644 "$installer_initrd" "$iso_live/initrd"
 
