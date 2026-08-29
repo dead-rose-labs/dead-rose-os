@@ -1,0 +1,46 @@
+#!/usr/bin/bash
+set -euo pipefail
+
+readonly media_label="${DEAD_ROSE_MEDIA_LABEL:-DEAD_ROSE_INSTALLER}"
+readonly media_device="${DEAD_ROSE_MEDIA_DEVICE:-/dev/disk/by-label/${media_label}}"
+readonly media_mount="${DEAD_ROSE_MEDIA_MOUNT:-/run/dead-rose-iso}"
+readonly root_mount="${DEAD_ROSE_ROOT_MOUNT:-/sysroot}"
+readonly media_wait_seconds="${DEAD_ROSE_MEDIA_WAIT_SECONDS:-60}"
+readonly squashfs="${media_mount}/live/rootfs.squashfs"
+
+log() {
+  echo "dead-rose-live-root: $*"
+}
+
+fail() {
+  log "ERROR: $*" >&2
+  exit 1
+}
+
+mkdir -p "$media_mount" "$root_mount"
+
+# udev may finish its initial queue before slow USB/SCSI media appears, so the
+# bounded path wait remains necessary after settle. The stable filesystem
+# label avoids assumptions about sr0, sdX, NVMe, or hypervisor enumeration.
+udevadm settle --timeout="$media_wait_seconds"
+attempt=0
+while [[ ! -e "$media_device" && "$attempt" -lt "$media_wait_seconds" ]]; do
+  sleep 1
+  attempt=$((attempt + 1))
+done
+
+[[ -e "$media_device" ]] || fail "install media label ${media_label} was not found after ${media_wait_seconds} seconds"
+
+log "mounting ${media_device} at ${media_mount}"
+mount -n -t iso9660 -o ro "$media_device" "$media_mount"
+[[ -f "$squashfs" ]] || fail "${squashfs} is missing from install media"
+
+log "mounting ${squashfs} at ${root_mount}"
+mount -n -t squashfs -o loop,ro "$squashfs" "$root_mount"
+[[ -x "$root_mount/usr/lib/systemd/systemd" ]] || fail "mounted root does not contain systemd"
+
+# systemd carries the initrd's /run mount across switch-root. Keeping the ISO
+# below /run preserves the SquashFS loop backing file without trying to write
+# a mount point into the read-only SquashFS root.
+
+log "live root mounted successfully"

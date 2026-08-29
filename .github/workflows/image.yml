@@ -10,4 +10,4 @@ jobs:
       - run: ./dr bootstrap
       - run: ./dr build
       - run: ./dr iso
-      - run: ./tests/boot/smoke.sh build/dead-rose-os-0.1.0-amd64.raw
+      - run: ./tests/boot/installer-iso-smoke.sh build/dead-rose-os-0.1.0-amd64.iso

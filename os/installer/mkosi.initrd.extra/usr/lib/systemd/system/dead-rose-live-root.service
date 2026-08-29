@@ -1,0 +1,15 @@
+[Unit]
+Description=Mount Dead Rose installer live root
+DefaultDependencies=no
+After=systemd-udevd.service systemd-udev-trigger.service
+Wants=systemd-udev-trigger.service
+Before=initrd-root-fs.target
+OnFailure=emergency.target
+OnFailureJobMode=replace-irreversibly
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/dead-rose-initrd/mount-live-root
+RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=journal+console

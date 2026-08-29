@@ -42,6 +42,12 @@ jobs:
       - name: Build installer ISO
         run: ./dr iso
 
+      - name: Smoke-test installer boot
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          ./tests/boot/installer-iso-smoke.sh "build/dead-rose-os-${version}-amd64.iso"
+
       - name: Print build contents and sizes
         continue-on-error: true
         run: |

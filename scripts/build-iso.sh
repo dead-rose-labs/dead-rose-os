@@ -52,6 +52,28 @@ assert_shadow_policy() {
   echo "shadow policy OK: /etc/shadow and /etc/gshadow are root:shadow (0:42) 0640 in $root"
 }
 
+assert_initrd_contents() {
+  local initrd="${1:?initrd}"
+  local listing
+
+  listing="$(sudo lsinitramfs "$initrd")" || fatal "could not inspect initramfs: $initrd"
+  for path in \
+    usr/lib/dead-rose-initrd/mount-live-root \
+    usr/lib/systemd/system/dead-rose-live-root.service \
+    usr/lib/systemd/system/initrd-root-fs.target.d/dead-rose-live-root.conf \
+    usr/bin/bash \
+    usr/bin/mkdir \
+    usr/bin/mount \
+    usr/bin/sleep \
+    usr/bin/udevadm; do
+    grep -Fxq "$path" <<<"$listing" || fatal "initramfs is missing required path: /$path"
+  done
+  for module in isofs.ko loop.ko squashfs.ko; do
+    grep -Eq "/${module}(\.(gz|xz|zst))?$" <<<"$listing" || fatal "initramfs is missing required kernel module: $module"
+  done
+  echo "initramfs contents OK: Dead Rose live-root unit and tools are present"
+}
+
 [[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
 mkdir -p "$iso_live" "$project_dir/build/logs"
 cd "$project_dir"
@@ -106,6 +128,7 @@ echo "ISO kernel: $installer_kernel"
 echo "ISO initrd: $installer_initrd"
 require_privileged_regular_file "$installer_kernel" "kernel"
 require_privileged_regular_file "$installer_initrd" "initramfs"
+assert_initrd_contents "$installer_initrd"
 sudo install -m0644 "$installer_kernel" "$iso_live/vmlinuz"
 sudo install -m0644 "$installer_initrd" "$iso_live/initrd"
 
@@ -113,11 +136,14 @@ efi_dir="$project_dir/build/efi/EFI/BOOT"
 efi_binary="$efi_dir/BOOTX64.EFI"
 mkdir -p "$efi_dir"
 require_regular_file "$project_dir/os/installer/grub.cfg" "installer grub config"
-grub-mkstandalone -O x86_64-efi -o "$efi_binary" "boot/grub/grub.cfg=$project_dir/os/installer/grub.cfg"
+require_regular_file "$project_dir/os/installer/grub-bootstrap.cfg" "embedded GRUB bootstrap config"
+install -Dm644 "$project_dir/os/installer/grub.cfg" "$iso_root/boot/grub/grub.cfg"
+grub-mkstandalone -O x86_64-efi -o "$efi_binary" "/boot/grub/grub.cfg=$project_dir/os/installer/grub-bootstrap.cfg"
 echo "EFI bootloader: $efi_binary"
 require_regular_file "$efi_binary" "EFI bootloader"
 truncate -s 8M "$iso_root/efiboot.img"
 mkfs.vfat "$iso_root/efiboot.img"
 mcopy -s -i "$iso_root/efiboot.img" "$project_dir/build/efi/EFI" ::/
 xorriso -as mkisofs -r -V DEAD_ROSE_INSTALLER -o "$iso" -J -joliet-long -e efiboot.img -no-emul-boot -isohybrid-gpt-basdat "$iso_root" 2>&1 | tee "$project_dir/build/logs/xorriso.log"
+sudo "$project_dir/tests/integration/installer-iso.sh" "$iso" "$iso_root" "$installer_root"
 sha256sum "$iso" > "$iso.sha256"

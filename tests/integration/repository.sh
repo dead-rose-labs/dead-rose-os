@@ -2,7 +2,7 @@
 set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 command -v rg >/dev/null || { echo "MISSING rg: install ripgrep (https://github.com/BurntSushi/ripgrep)" >&2; exit 1; }
-required=(VERSION DESIGN.md os/mkosi.conf os/mkosi.repart/10-esp.conf os/mkosi.repart/20-root-a.conf os/mkosi.repart/30-root-b.conf os/mkosi.repart/40-state.conf os/systemd/dead-rose-core.service os/systemd/dead-rose-graphical.service apps/shell/src-tauri/tauri.conf.json apps/installer/src-tauri/tauri.conf.json)
+required=(VERSION DESIGN.md os/mkosi.conf os/mkosi.repart/10-esp.conf os/mkosi.repart/20-root-a.conf os/mkosi.repart/30-root-b.conf os/mkosi.repart/40-state.conf os/installer/grub-bootstrap.cfg os/installer/grub.cfg os/installer/mkosi.initrd.conf os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service os/systemd/dead-rose-core.service os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service apps/shell/src-tauri/tauri.conf.json apps/installer/src-tauri/tauri.conf.json tests/integration/installer-iso.sh tests/integration/live-root.sh tests/boot/installer-iso-smoke.sh)
 for path in "${required[@]}"; do [[ -f "$project_dir/$path" ]] || { echo "Missing $path" >&2; exit 1; }; done
 if rg -n "localStorage|sessionStorage|run_command|Command::new\(.*sh" "$project_dir/apps" "$project_dir/crates"; then echo "Forbidden runtime pattern found" >&2; exit 1; fi
 if rg -n '^Output=.*[/\\]' "$project_dir/os" --glob mkosi.conf; then echo "mkosi Output must be a filename without path components" >&2; exit 1; fi
@@ -16,7 +16,7 @@ if awk '
     if ($0 ~ /^[A-Za-z]+=/) {
       setting = $0
       sub(/=.*/, "", setting)
-      in_pkglist = (setting ~ /^(Packages|BuildPackages|VolatilePackages|ToolsTreePackages|PackageDirectories)$/)
+      in_pkglist = (setting ~ /^(Packages|BuildPackages|VolatilePackages|InitrdPackages|ToolsTreePackages|PackageDirectories)$/)
       if (in_pkglist) {
         value = $0
         sub(/^[^=]*=/, "", value)
@@ -78,6 +78,37 @@ if rg -q 'resolve_single_boot_artifact' "$iso_build"; then
   echo "build-iso.sh must use mkosi's split initrd instead of searching the image root" >&2
   exit 1
 fi
+
+grub_config="$project_dir/os/installer/grub.cfg"
+grub_bootstrap="$project_dir/os/installer/grub-bootstrap.cfg"
+live_root="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root"
+live_root_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service"
+installer_unit="$project_dir/os/systemd/dead-rose-installer.service"
+
+[[ -x "$live_root" ]] || { echo "Dead Rose initrd live-root helper must be executable" >&2; exit 1; }
+[[ -x "$project_dir/tests/integration/installer-iso.sh" ]] || { echo "installer ISO check must be executable" >&2; exit 1; }
+[[ -x "$project_dir/tests/integration/live-root.sh" ]] || { echo "live-root integration check must be executable" >&2; exit 1; }
+[[ -x "$project_dir/tests/boot/installer-iso-smoke.sh" ]] || { echo "installer ISO smoke test must be executable" >&2; exit 1; }
+rg -q 'search --no-floppy --label DEAD_ROSE_INSTALLER --set=root' "$grub_config" || { echo "GRUB must locate installer media by filesystem label" >&2; exit 1; }
+rg -q 'menuentry "Dead Rose OS Installer"' "$grub_config" || { echo "GRUB must provide the installer menu entry" >&2; exit 1; }
+rg -q 'configfile .*boot/grub/grub.cfg' "$grub_bootstrap" || { echo "embedded GRUB bootstrap must load the external menu" >&2; exit 1; }
+rg -q 'grub-bootstrap.cfg' "$iso_build" || { echo "standalone GRUB must embed the bootstrap config" >&2; exit 1; }
+if rg -q '\(cd0\)|boot=live' "$grub_config"; then
+  echo "GRUB must not depend on cd0 numbering or the unused Debian live-boot path" >&2
+  exit 1
+fi
+rg -q 'media_label=.*DEAD_ROSE_INSTALLER' "$live_root" || { echo "initrd must use the installer filesystem label" >&2; exit 1; }
+rg -q '/dev/disk/by-label/' "$live_root" || { echo "initrd must locate media through udev filesystem labels" >&2; exit 1; }
+if rg -q '/dev/sr0' "$live_root"; then echo "initrd must not hard-code optical device names" >&2; exit 1; fi
+rg -q 'Before=initrd-root-fs.target' "$live_root_unit" || { echo "live-root mount must complete before initrd-root-fs.target" >&2; exit 1; }
+rg -q 'RuntimeDirectory=dead-rose-cage' "$installer_unit" || { echo "installer Cage service must create its runtime directory" >&2; exit 1; }
+rg -q 'Environment=XDG_RUNTIME_DIR=/run/dead-rose-cage' "$installer_unit" || { echo "installer Cage service must set XDG_RUNTIME_DIR" >&2; exit 1; }
+rg -q 'Requires=systemd-logind.service' "$installer_unit" || { echo "installer Cage service must expose logind failures as a hard dependency" >&2; exit 1; }
+rg -q 'PAMName=login' "$installer_unit" || { echo "installer Cage service must register a logind session for its TTY seat" >&2; exit 1; }
+rg -q 'installer-iso\.sh' "$iso_build" || { echo "build-iso.sh must validate the completed ISO" >&2; exit 1; }
+rg -q 'installer-iso-smoke\.sh' "$project_dir/.github/workflows/build-os.yml" || { echo "CI must smoke-test the installer ISO boot" >&2; exit 1; }
+rg -q 'installer-iso-smoke\.sh' "$project_dir/.github/workflows/image.yml" || { echo "privileged image CI must smoke-test the installer ISO boot" >&2; exit 1; }
+
 squashfs_test="$project_dir/tests/integration/squashfs.sh"
 [[ -x "$squashfs_test" ]] || { echo "squashfs regression test is missing or not executable: $squashfs_test" >&2; exit 1; }
 rg -q 'etc/shadow' "$squashfs_test" || { echo "squashfs regression test must assert presence of /etc/shadow" >&2; exit 1; }

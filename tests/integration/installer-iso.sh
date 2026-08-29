@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+iso="${1:?usage: installer-iso.sh ISO ISO_ROOT INSTALLER_ROOT}"
+iso_root="${2:?usage: installer-iso.sh ISO ISO_ROOT INSTALLER_ROOT}"
+installer_root="${3:?usage: installer-iso.sh ISO ISO_ROOT INSTALLER_ROOT}"
+
+fail() {
+  echo "installer ISO check: $*" >&2
+  exit 1
+}
+
+[[ -s "$iso" ]] || fail "ISO is missing or empty: $iso"
+command -v xorriso >/dev/null 2>&1 || fail "xorriso is required"
+command -v mdir >/dev/null 2>&1 || fail "mdir is required"
+command -v unsquashfs >/dev/null 2>&1 || fail "unsquashfs is required"
+
+listing="$(xorriso -indev "$iso" -find / -maxdepth 3 2>&1)" || fail "could not list ISO contents"
+for path in /live/vmlinuz /live/initrd /live/rootfs.squashfs /efiboot.img /boot/grub/grub.cfg; do
+  grep -Fq "$path" <<<"$listing" || fail "ISO is missing $path"
+done
+
+pvd="$(xorriso -indev "$iso" -pvd_info 2>&1)" || fail "could not read ISO volume metadata"
+grep -Eq "Volume Id[^']*'DEAD_ROSE_INSTALLER'" <<<"$pvd" || fail "ISO volume label is not DEAD_ROSE_INSTALLER"
+
+efi_image="$iso_root/efiboot.img"
+[[ -s "$efi_image" ]] || fail "EFI boot image is missing or empty"
+mdir -i "$efi_image" ::/EFI/BOOT/BOOTX64.EFI >/dev/null || fail "EFI image does not contain BOOTX64.EFI"
+
+grub_config="$iso_root/boot/grub/grub.cfg"
+[[ -s "$grub_config" ]] || fail "external GRUB config is missing"
+grep -Fq 'search --no-floppy --label DEAD_ROSE_INSTALLER --set=root' "$grub_config" || fail "GRUB does not search by ISO label"
+grep -Fq 'menuentry "Dead Rose OS Installer"' "$grub_config" || fail "GRUB installer menu entry is missing"
+
+rootfs="$iso_root/live/rootfs.squashfs"
+unsquashfs -s "$rootfs" >/dev/null || fail "rootfs.squashfs is not readable"
+[[ -x "$installer_root/usr/bin/cage" ]] || fail "Cage is missing from installer root"
+[[ -x "$installer_root/usr/lib/dead-rose/dead-rose-installer" ]] || fail "installer binary is missing from installer root"
+[[ -f "$installer_root/usr/lib/systemd/system/dead-rose-installer.service" ]] || fail "installer systemd unit is missing from installer root"
+
+echo "installer ISO check: OK - UEFI, GRUB, live artifacts, label, rootfs, Cage and installer are present"
