@@ -6,6 +6,8 @@ version="$(tr -d '[:space:]' < "$project_dir/VERSION")"
 raw="$project_dir/build/dead-rose-os-${version}-amd64.raw"
 iso="$project_dir/build/dead-rose-os-${version}-amd64.iso"
 installer_root="$project_dir/build/installer-root"
+installer_kernel="$installer_root.vmlinuz"
+installer_initrd="$installer_root.initrd"
 iso_root="$project_dir/build/iso-root"
 iso_live="$iso_root/live"
 
@@ -50,28 +52,6 @@ assert_shadow_policy() {
   echo "shadow policy OK: /etc/shadow and /etc/gshadow are root:shadow (0:42) 0640 in $root"
 }
 
-resolve_single_boot_artifact() {
-  local label="$1" pattern="$2" search_root="$3"
-  local -a candidates=()
-  if [[ ! -d "$search_root" ]]; then
-    fatal "no $label sources: directory does not exist: $search_root"
-  fi
-  # mkosi builds the root as root, and Ubuntu's systemd-boot integration keeps
-  # kernel artifacts below protected /boot/ubuntu directories. Discover them
-  # with the same privilege used to build and pack the image.
-  mapfile -t candidates < <(sudo find "$search_root" -name "$pattern" -type f | LC_ALL=C sort)
-  case "${#candidates[@]}" in
-    0) fatal "no $label matching '$pattern' under $search_root; install a kernel/initrd in the installer image" ;;
-    1) ;;
-    *)
-      printf 'build-iso: %s files match %s under %s; aborting because the boot artifact is ambiguous:\n' "${#candidates[@]}" "'$pattern'" "$search_root" >&2
-      printf '  %s\n' "${candidates[@]}" >&2
-      exit 1
-      ;;
-  esac
-  printf '%s\n' "${candidates[0]}"
-}
-
 [[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
 mkdir -p "$iso_live" "$project_dir/build/logs"
 cd "$project_dir"
@@ -111,14 +91,16 @@ sudo chown -- "$(id -u):$(id -g)" "$rootfs_squashfs"
 echo "Packed live root filesystem: $rootfs_squashfs"
 sudo "$project_dir/tests/integration/squashfs.sh" "$rootfs_squashfs" "$installer_root" "$(id -u)"
 
-kernel="$(resolve_single_boot_artifact kernel 'vmlinuz-*' "$installer_root/boot")"
-initrd="$(resolve_single_boot_artifact initramfs 'initrd.img-*' "$installer_root/boot")"
-echo "ISO kernel: $kernel"
-echo "ISO initrd: $initrd"
-require_privileged_regular_file "$kernel" "kernel"
-require_privileged_regular_file "$initrd" "initramfs"
-sudo install -m0644 "$kernel" "$iso_live/vmlinuz"
-sudo install -m0644 "$initrd" "$iso_live/initrd"
+# mkosi exports the kernel and the complete, assembled initrd as split
+# artifacts next to a directory image. The initrd is not guaranteed to exist
+# as /boot/initrd.img-* inside the root (and may combine multiple generated
+# initrds), so consume mkosi's declared outputs directly.
+echo "ISO kernel: $installer_kernel"
+echo "ISO initrd: $installer_initrd"
+require_privileged_regular_file "$installer_kernel" "kernel"
+require_privileged_regular_file "$installer_initrd" "initramfs"
+sudo install -m0644 "$installer_kernel" "$iso_live/vmlinuz"
+sudo install -m0644 "$installer_initrd" "$iso_live/initrd"
 
 efi_dir="$project_dir/build/efi/EFI/BOOT"
 efi_binary="$efi_dir/BOOTX64.EFI"

@@ -56,24 +56,18 @@ if ! rg -q 'squashfs\.sh' "$iso_build"; then
   echo "build-iso.sh must validate the squashfs after packing" >&2
   exit 1
 fi
-for pattern in 'vmlinuz-\*' 'initrd\.img-\*'; do
-  if ! rg -q "resolve_single_boot_artifact.*'$pattern'|'$pattern'" "$iso_build"; then
-    echo "build-iso.sh must resolve the $pattern boot artifact deterministically" >&2
-    exit 1
-  fi
-done
-if ! rg -q 'sudo find .*search_root' "$iso_build"; then
-  echo "boot artifact discovery must be privileged because mkosi protects Ubuntu boot directories" >&2
+if ! rg -q '^SplitArtifacts=kernel,initrd$' "$project_dir/os/installer/mkosi.conf"; then
+  echo "the installer image must explicitly export mkosi kernel and initrd artifacts" >&2
   exit 1
 fi
-for artifact in kernel initrd; do
+for artifact in installer_kernel installer_initrd; do
   if ! rg -q "sudo install .*\\\$$artifact" "$iso_build"; then
-    echo "the $artifact must be copied from the privileged installer root with sudo install" >&2
+    echo "the mkosi $artifact split artifact must be staged with sudo install" >&2
     exit 1
   fi
 done
-if rg -q 'sort +\|\s*tail|tail\s+-n\s*1' "$iso_build"; then
-  echo "boot artifact discovery must not use sort|tail, which silently returns empty or ambiguous matches" >&2
+if rg -q 'resolve_single_boot_artifact' "$iso_build"; then
+  echo "build-iso.sh must use mkosi's split initrd instead of searching the image root" >&2
   exit 1
 fi
 squashfs_test="$project_dir/tests/integration/squashfs.sh"
