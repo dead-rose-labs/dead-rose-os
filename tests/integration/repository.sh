@@ -110,6 +110,7 @@ rg -q 'Environment=XDG_RUNTIME_DIR=/run/dead-rose-cage' "$installer_unit" || { e
 rg -q 'Requires=systemd-logind.service' "$installer_unit" || { echo "installer Cage service must expose logind failures as a hard dependency" >&2; exit 1; }
 rg -q 'PAMName=login' "$installer_unit" || { echo "installer Cage service must register a logind session for its TTY seat" >&2; exit 1; }
 rg -q 'installer-iso\.sh' "$iso_build" || { echo "build-iso.sh must validate the completed ISO" >&2; exit 1; }
+rg -Fq "Volume [Ii]d" "$project_dir/tests/integration/installer-iso.sh" || { echo "installer ISO check must accept xorriso volume-id capitalization variants" >&2; exit 1; }
 rg -q 'installer-iso-smoke\.sh' "$project_dir/.github/workflows/build-os.yml" || { echo "CI must smoke-test the installer ISO boot" >&2; exit 1; }
 rg -q 'installer-iso-smoke\.sh' "$project_dir/.github/workflows/image.yml" || { echo "privileged image CI must smoke-test the installer ISO boot" >&2; exit 1; }
 

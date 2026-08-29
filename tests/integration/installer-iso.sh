@@ -21,7 +21,10 @@ for path in /live/vmlinuz /live/initrd /live/rootfs.squashfs /efiboot.img /boot/
 done
 
 pvd="$(xorriso -indev "$iso" -pvd_info 2>&1)" || fail "could not read ISO volume metadata"
-grep -Eq "Volume Id[^']*'DEAD_ROSE_INSTALLER'" <<<"$pvd" || fail "ISO volume label is not DEAD_ROSE_INSTALLER"
+# xorriso has emitted both `Volume Id : LABEL` and
+# `Volume id : 'LABEL'` across releases. Match the field itself while allowing
+# the optional quotes instead of depending on one presentation format.
+grep -Eq "^[[:space:]]*Volume [Ii]d[[:space:]]*:[[:space:]]*'?DEAD_ROSE_INSTALLER'?[[:space:]]*$" <<<"$pvd" || fail "ISO volume label is not DEAD_ROSE_INSTALLER"
 
 efi_image="$iso_root/efiboot.img"
 [[ -s "$efi_image" ]] || fail "EFI boot image is missing or empty"
