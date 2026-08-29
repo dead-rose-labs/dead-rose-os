@@ -52,6 +52,10 @@ if rg -q 'zstd .*\|.*tee' "$iso_build" || ! rg -q 'zstd .*--sparse' "$iso_build"
   echo "the embedded raw image must be decompressed sparsely instead of materialized through tee" >&2
   exit 1
 fi
+if ! rg -q 'chown 0:0 .*embedded_raw' "$iso_build"; then
+  echo "the embedded raw image must be restored to root ownership after zstd copies input metadata" >&2
+  exit 1
+fi
 if ! rg -q 'sudo mksquashfs' "$iso_build"; then
   echo "mksquashfs must run with privileges so privileged files and ownership are preserved" >&2
   exit 1

@@ -76,7 +76,11 @@ sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc
 # Preserve zero-filled regions as holes. Piping through tee materializes the
 # nominal 25 GiB disk image and can exhaust the CI runner even though the raw
 # image is sparse.
-sudo zstd --decompress --force --sparse "$raw.zst" -o "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw"
+embedded_raw="$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw"
+sudo zstd --decompress --force --sparse "$raw.zst" -o "$embedded_raw"
+# zstd copies ownership metadata from its runner-owned input. Restore image
+# ownership explicitly without recursively changing the mkosi root.
+sudo chown 0:0 "$embedded_raw"
 sudo cp "$raw.sha256" "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.sha256"
 sudo ln -sf /usr/lib/systemd/system/dead-rose-installer.service "$installer_root/etc/systemd/system/graphical.target.wants/dead-rose-installer.service"
 
