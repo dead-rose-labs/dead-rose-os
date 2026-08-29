@@ -39,6 +39,6 @@ corepack pnpm --dir "$project_dir" install --frozen-lockfile
 
 missing=0
 for tool in cargo mkosi xorriso qemu-system-x86_64 rg; do command -v "$tool" >/dev/null || { echo "MISSING $tool"; missing=1; }; done
-[[ -e /usr/share/OVMF/OVMF_CODE_4M.fd || -e /usr/share/OVMF/OVMF_CODE.fd ]] || { echo "MISSING OVMF firmware"; missing=1; }
+[[ (-e /usr/share/OVMF/OVMF_CODE_4M.fd && -e /usr/share/OVMF/OVMF_VARS_4M.fd) || (-e /usr/share/OVMF/OVMF_CODE.fd && -e /usr/share/OVMF/OVMF_VARS.fd) ]] || { echo "MISSING matching OVMF CODE/VARS firmware pair"; missing=1; }
 if [[ "$missing" -ne 0 ]]; then echo "Builder preparation incomplete." >&2; exit 1; fi
 echo "Dead Rose OS builder ready."

@@ -5,19 +5,26 @@ iso="${1:?usage: installer-iso-smoke.sh ISO}"
 [[ -s "$iso" ]] || { echo "Installer ISO not found: $iso" >&2; exit 1; }
 command -v qemu-system-x86_64 >/dev/null 2>&1 || { echo "qemu-system-x86_64 is required" >&2; exit 1; }
 
-firmware=""
-for candidate in \
-  /usr/share/OVMF/OVMF_CODE_4M.fd \
-  /usr/share/OVMF/OVMF_CODE.fd \
-  /usr/share/edk2/x64/OVMF_CODE.fd; do
-  if [[ -f "$candidate" ]]; then
-    firmware="$candidate"
+firmware_code=""
+firmware_vars_template=""
+for pair in \
+  /usr/share/OVMF/OVMF_CODE_4M.fd:/usr/share/OVMF/OVMF_VARS_4M.fd \
+  /usr/share/OVMF/OVMF_CODE.fd:/usr/share/OVMF/OVMF_VARS.fd \
+  /usr/share/edk2/x64/OVMF_CODE.fd:/usr/share/edk2/x64/OVMF_VARS.fd; do
+  code="${pair%%:*}"
+  vars="${pair#*:}"
+  if [[ -f "$code" && -f "$vars" ]]; then
+    firmware_code="$code"
+    firmware_vars_template="$vars"
     break
   fi
 done
-[[ -n "$firmware" ]] || { echo "OVMF firmware was not found" >&2; exit 1; }
+[[ -n "$firmware_code" ]] || { echo "A matching OVMF CODE/VARS firmware pair was not found" >&2; exit 1; }
 
-log="$(mktemp)"
+runtime_dir="$(mktemp -d)"
+log="$runtime_dir/qemu.log"
+firmware_vars="$runtime_dir/OVMF_VARS.fd"
+cp -- "$firmware_vars_template" "$firmware_vars"
 qemu_pid=""
 monitor_port=$((23000 + ($$ % 1000)))
 cleanup() {
@@ -25,7 +32,7 @@ cleanup() {
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true
   fi
-  rm -f -- "$log"
+  rm -rf -- "$runtime_dir"
 }
 trap cleanup EXIT
 
@@ -34,7 +41,8 @@ qemu-system-x86_64 \
   -cpu max \
   -m 2048 \
   -smp 2 \
-  -bios "$firmware" \
+  -drive "if=pflash,format=raw,unit=0,readonly=on,file=$firmware_code" \
+  -drive "if=pflash,format=raw,unit=1,file=$firmware_vars" \
   -cdrom "$iso" \
   -boot order=d,menu=off \
   -device virtio-vga \
