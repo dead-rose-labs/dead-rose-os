@@ -20,6 +20,30 @@ require_regular_file() {
   [[ -f "$path" ]] || fatal "$label is not a present regular file: $path"
 }
 
+# Ubuntu/Debian policy: /etc/shadow and /etc/gshadow must be regular files owned
+# by root:shadow (gid 42) with mode 0640. systemd-sysusers creates them from
+# scratch with mode 0000 during rootfs construction when no package ships them,
+# so assert the final source rootfs is correct before it is packed.
+assert_shadow_policy() {
+  local root="${1:?image root}"
+
+  [[ -f "$root/etc/group" ]] || fatal "$root/etc/group is missing"
+  if ! LC_ALL=C awk -F: '$1 == "shadow" { print $3 }' "$root/etc/group" | grep -q '^42$'; then
+    fatal "the 'shadow' group (gid 42) is missing from $root/etc/group"
+  fi
+
+  for entry in etc/shadow etc/gshadow; do
+    local stat
+    [[ -f "$root/$entry" ]] || fatal "$root/$entry is missing and must exist before packing"
+    stat="$(stat -c '%u:%g:%a' -- "$root/$entry")"
+    if [[ "$stat" != "0:42:640" ]]; then
+      fatal "$entry must be owner root, group shadow (gid 42), mode 0640 before packing, got '$stat'"
+    fi
+  done
+
+  echo "shadow policy OK: /etc/shadow and /etc/gshadow are root:shadow (0:42) 0640 in $root"
+}
+
 resolve_single_boot_artifact() {
   local label="$1" pattern="$2" search_root="$3"
   local -a candidates=()
@@ -63,6 +87,11 @@ sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc
 zstd -dc "$raw.zst" | sudo tee "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw" >/dev/null
 sudo cp "$raw.sha256" "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.sha256"
 sudo ln -sf /usr/lib/systemd/system/dead-rose-installer.service "$installer_root/etc/systemd/system/graphical.target.wants/dead-rose-installer.service"
+
+# Fail fast on the sensitive file policy before anything gets packed: the
+# source rootfs must already carry /etc/shadow and /etc/gshadow as
+# root:shadow 0640, matching the runner (non-builder) Ubuntu policy.
+assert_shadow_policy "$installer_root"
 
 # Packing the live root must run with privileges: an unprivileged mksquashfs
 # cannot read 0640 root:shadow files and silently packs them empty, and it

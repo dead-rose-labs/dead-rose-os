@@ -43,6 +43,11 @@ else
   exit 1
 fi
 
+if ! LC_ALL=C awk -F: '$1 == "shadow" { print $3 }' "$source_root/etc/group" 2>/dev/null | grep -q '^42$'; then
+  echo "squashfs check: the 'shadow' group (gid 42) must exist in $source_root/etc/group" >&2
+  exit 1
+fi
+
 for entry in etc/shadow etc/gshadow; do
   line="$(grep -E " squashfs-root/$entry\$" "$listing" | LC_ALL=C sort | head -n 1 || true)"
   if [[ -z "$line" ]]; then
@@ -55,8 +60,8 @@ for entry in etc/shadow etc/gshadow; do
   uid="${ids%%/*}"
   gid="${ids##*/}"
   [[ "$mode" == "-rw-r-----" ]] || fail "/$entry must keep mode 0640 (-rw-r-----), got '$mode'"
-  [[ "$uid" == "0" ]] || fail "/$entry must be owned by uid 0, got '$uid'"
-  [[ "$gid" != "$builder_uid" ]] || fail "/$entry group is the builder gid $builder_uid"
+  [[ "$uid" == "0" ]] || fail "/$entry must be owned by uid 0 (root), got '$uid'"
+  [[ "$gid" == "42" ]] || fail "/$entry must be owned by gid 42 (shadow), got '$gid'"
 done
 
 # The sensitive files must round-trip byte-for-byte; an unreadable source
