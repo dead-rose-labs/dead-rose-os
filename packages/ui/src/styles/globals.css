@@ -1,0 +1,150 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "tailwindcss";
+
+@source "../../../../apps/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+:root {
+  color-scheme: dark;
+  --background: #0b0b0c;
+  --foreground: #f4f3f0;
+  --card: #111113;
+  --card-foreground: #f4f3f0;
+  --elevated: #171719;
+  --primary: #922f49;
+  --primary-hover: #a23852;
+  --primary-foreground: #f4f3f0;
+  --secondary: #171719;
+  --secondary-foreground: #f4f3f0;
+  --accent: #2a1118;
+  --accent-foreground: #d9a9b5;
+  --muted: #171719;
+  --muted-foreground: #aaa7a2;
+  --border: #252529;
+  --input: #2b2b2f;
+  --ring: #a83b58;
+  --destructive: #b84c5d;
+  --destructive-foreground: #fff;
+  --radius-control: 0.625rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.light {
+  color-scheme: light;
+  --background: #f7f6f3;
+  --foreground: #1b1918;
+  --card: #ffffff;
+  --card-foreground: #1b1918;
+  --elevated: #eeece7;
+  --primary: #7a263a;
+  --primary-hover: #681f31;
+  --primary-foreground: #ffffff;
+  --secondary: #eeece7;
+  --secondary-foreground: #1b1918;
+  --accent: #f3e7ea;
+  --accent-foreground: #521927;
+  --muted: #eeece7;
+  --muted-foreground: #6f6b67;
+  --border: #d7d3cd;
+  --input: #b9b4ad;
+  --ring: #922f49;
+  --destructive: #a83f51;
+  --destructive-foreground: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --font-sans: "Geist Variable", sans-serif;
+  --font-mono: "Geist Mono Variable", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.view-enter {
+  animation: view-enter 180ms var(--ease-out) both;
+}
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  background: var(--background);
+}
+body {
+  min-width: 1024px;
+  overflow: hidden;
+  font-family: "Geist Variable", sans-serif;
+  color: var(--foreground);
+  caret-color: var(--primary);
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--primary) 24%, transparent);
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  touch-action: manipulation;
+}
+::selection {
+  background: #521927;
+  color: #f4f3f0;
+}
+* {
+  scrollbar-color: var(--input) var(--background);
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .view-enter {
+    animation-name: view-enter-reduced;
+  }
+}
+
+@keyframes view-enter-reduced {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

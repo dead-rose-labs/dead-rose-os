@@ -1,0 +1,11 @@
+[package]
+name = "dead-rose-ipc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+dead-rose-system-types = { path = "../system-types" }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true

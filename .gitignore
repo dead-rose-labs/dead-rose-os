@@ -1,0 +1,14 @@
+/build/
+/target/
+**/node_modules/
+**/dist/
+**/.vite/
+**/*.tsbuildinfo
+**/src-tauri/gen/
+.DS_Store
+.env
+.env.*
+!.env.example
+.agents/
+**/.impeccable/
+skills-lock.json

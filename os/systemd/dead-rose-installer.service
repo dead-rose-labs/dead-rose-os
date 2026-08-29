@@ -1,0 +1,21 @@
+[Unit]
+Description=Dead Rose OS Installer
+After=systemd-user-sessions.service plymouth-quit-wait.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.raw
+Environment=DEAD_ROSE_STATE_MOUNT=/run/dead-rose-installer/state
+ExecStart=/usr/bin/cage -s -- /usr/lib/dead-rose/dead-rose-installer
+Restart=on-failure
+TTYPath=/dev/tty1
+StandardInput=tty
+TTYReset=yes
+TTYVHangup=yes
+NoNewPrivileges=no
+PrivateTmp=yes
+ProtectHome=yes
+
+[Install]
+WantedBy=graphical.target

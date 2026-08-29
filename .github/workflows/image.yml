@@ -1,0 +1,13 @@
+name: OS image
+on:
+  workflow_dispatch:
+
+jobs:
+  image:
+    runs-on: [self-hosted, linux, x64, ubuntu-26.04]
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./dr bootstrap
+      - run: ./dr build
+      - run: ./dr iso
+      - run: ./tests/boot/smoke.sh build/dead-rose-os-0.1.0-amd64.raw

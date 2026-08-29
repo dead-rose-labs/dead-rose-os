@@ -1,0 +1,12 @@
+[Unit]
+Description=Dead Rose persistent state
+Before=local-fs.target dead-rose-core.service
+
+[Mount]
+What=/dev/disk/by-partlabel/STATE
+Where=/var/lib/dead-rose
+Type=ext4
+Options=nodev,nosuid
+
+[Install]
+WantedBy=local-fs.target

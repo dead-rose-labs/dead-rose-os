@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+command="${1:-help}"
+
+case "$command" in
+  bootstrap) exec "$project_dir/scripts/bootstrap-builder.sh" ;;
+  build) exec "$project_dir/scripts/build-os.sh" ;;
+  iso) exec "$project_dir/scripts/build-iso.sh" ;;
+  vm) exec "$project_dir/scripts/run-vm.sh" ;;
+  installer-vm) exec "$project_dir/scripts/run-installer-vm.sh" ;;
+  test) exec "$project_dir/scripts/test.sh" ;;
+  clean)
+    build_dir="$project_dir/build"
+    if [[ "$build_dir" != "$project_dir/build" ]]; then echo "Refusing unsafe clean target" >&2; exit 1; fi
+    find "$build_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+    ;;
+  help|-h|--help)
+    echo "Dead Rose OS build interface"
+    echo "  ./dr bootstrap      Prepare Ubuntu 26.04 amd64 builder"
+    echo "  ./dr build          Build the raw OS image"
+    echo "  ./dr iso            Build the installer ISO"
+    echo "  ./dr vm             Boot the raw image in QEMU"
+    echo "  ./dr installer-vm   Boot installer with a disposable target"
+    echo "  ./dr test           Run frontend, Rust and static tests"
+    echo "  ./dr clean          Remove generated build artifacts"
+    ;;
+  *) echo "Unknown command: $command" >&2; "$0" help; exit 2 ;;
+esac
