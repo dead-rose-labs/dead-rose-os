@@ -7,6 +7,7 @@ iso="$project_dir/build/dead-rose-os-${version}-amd64.iso"
 [[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
 mkdir -p "$project_dir/build/iso-root/live" "$project_dir/build/logs"
 cd "$project_dir"
+mkosi --directory "$project_dir/os/installer" summary
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @dead-rose/installer build
 cargo build --release --locked -p dead-rose-installer

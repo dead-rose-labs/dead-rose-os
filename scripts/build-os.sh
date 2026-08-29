@@ -2,9 +2,12 @@
 set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 version="$(tr -d '[:space:]' < "$project_dir/VERSION")"
-output="$project_dir/build/dead-rose-os-${version}-amd64.raw"
+output_directory="$project_dir/build"
+output_name="dead-rose-os-${version}-amd64.raw"
+output="$output_directory/$output_name"
 mkdir -p "$project_dir/build/logs"
 cd "$project_dir"
+mkosi --directory os --output-directory "$output_directory" --output "$output_name" summary
 corepack pnpm install --frozen-lockfile
 corepack pnpm build
 cargo build --release --locked -p dead-rose-core -p dead-rose-shell
@@ -23,6 +26,6 @@ ln -sf /usr/lib/systemd/system/dead-rose-core.service os/mkosi.extra/etc/systemd
 ln -sf /usr/lib/systemd/system/dead-rose-graphical.service os/mkosi.extra/etc/systemd/system/graphical.target.wants/dead-rose-graphical.service
 ln -sf '/usr/lib/systemd/system/var-lib-dead\x2drose.mount' 'os/mkosi.extra/etc/systemd/system/local-fs.target.wants/var-lib-dead\x2drose.mount'
 ln -sf /usr/share/plymouth/themes/dead-rose/dead-rose.plymouth os/mkosi.extra/usr/share/plymouth/themes/default.plymouth
-mkosi --directory os --output "$output" build 2>&1 | tee "$project_dir/build/logs/mkosi.log"
+mkosi --directory os --output-directory "$output_directory" --output "$output_name" build 2>&1 | tee "$project_dir/build/logs/mkosi.log"
 sha256sum "$output" > "$output.sha256"
 zstd -T0 -19 --force "$output" -o "$output.zst"
