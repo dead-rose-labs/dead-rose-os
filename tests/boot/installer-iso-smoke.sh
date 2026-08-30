@@ -17,6 +17,19 @@ for pair in \
 done
 [[ -n "$firmware_code" ]] || { echo "OVMF firmware pair was not found" >&2; exit 1; }
 
+qemu_accel="tcg"
+qemu_cpu="max"
+if [[ -r /dev/kvm && -w /dev/kvm ]]; then
+  qemu_accel="kvm"
+  qemu_cpu="host"
+fi
+echo "installer boot smoke: using QEMU accelerator $qemu_accel"
+
+install_timeout_seconds="${DEAD_ROSE_INSTALL_TIMEOUT_SECONDS:-2400}"
+installed_boot_timeout_seconds="${DEAD_ROSE_BOOT_TIMEOUT_SECONDS:-360}"
+[[ "$install_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { echo "invalid install timeout" >&2; exit 2; }
+[[ "$installed_boot_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { echo "invalid boot timeout" >&2; exit 2; }
+
 runtime_dir="$(mktemp -d)"
 target="$runtime_dir/target.qcow2"
 smoke_log_dir="${DEAD_ROSE_SMOKE_LOG_DIR:-$(pwd)/build/logs/boot}"
@@ -34,7 +47,7 @@ cleanup() {
 trap cleanup EXIT
 
 qemu-system-x86_64 \
-  -machine q35,accel=tcg -cpu max -m 3072 -smp 2 \
+  -machine "q35,accel=$qemu_accel" -cpu "$qemu_cpu" -m 3072 -smp 2 \
   -drive "if=pflash,format=raw,unit=0,readonly=on,file=$firmware_code" \
   -drive "if=pflash,format=raw,unit=1,file=$firmware_vars" \
   -cdrom "$iso" -boot order=d,menu=off \
@@ -43,7 +56,9 @@ qemu-system-x86_64 \
   -device virtio-vga -display none -serial stdio -no-reboot -no-shutdown >"$installer_log" 2>&1 &
 qemu_pid="$!"
 
-for _ in {1..1200}; do
+install_deadline=$((SECONDS + install_timeout_seconds))
+last_progress=""
+while (( SECONDS < install_deadline )); do
   if rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$installer_log"; then break; fi
   if rg -q 'installer backend failed:' "$installer_log"; then
     echo "installer boot smoke: privileged backend reported failure" >&2
@@ -55,6 +70,11 @@ for _ in {1..1200}; do
     tail -n 300 "$installer_log" >&2
     exit 1
   fi
+  current_progress="$(rg -o 'DEAD_ROSE_INSTALL_PROGRESS [a-z_]+' "$installer_log" | tail -n 1 || true)"
+  if [[ -n "$current_progress" && "$current_progress" != "$last_progress" ]]; then
+    echo "installer boot smoke: $current_progress"
+    last_progress="$current_progress"
+  fi
   sleep 1
 done
 rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$installer_log" || { echo "installer UI never became ready" >&2; tail -n 300 "$installer_log" >&2; exit 1; }
@@ -65,7 +85,7 @@ qemu_pid=""
 
 cp -- "$firmware_vars_template" "$firmware_vars"
 qemu-system-x86_64 \
-  -machine q35,accel=tcg -cpu max -m 2048 -smp 2 \
+  -machine "q35,accel=$qemu_accel" -cpu "$qemu_cpu" -m 2048 -smp 2 \
   -drive "if=pflash,format=raw,unit=0,readonly=on,file=$firmware_code" \
   -drive "if=pflash,format=raw,unit=1,file=$firmware_vars" \
   -drive "if=none,id=target,format=qcow2,file=$target" \
@@ -73,7 +93,8 @@ qemu-system-x86_64 \
   -device virtio-vga -display none -serial stdio -no-reboot -no-shutdown >"$installed_log" 2>&1 &
 qemu_pid="$!"
 
-for _ in {1..360}; do
+boot_deadline=$((SECONDS + installed_boot_timeout_seconds))
+while (( SECONDS < boot_deadline )); do
   if rg -q 'DEAD_ROSE_SHELL_READY' "$installed_log"; then
     echo "installer boot smoke: OK - ISO UI, curtin install and installed unprivileged shell reached"
     exit 0
