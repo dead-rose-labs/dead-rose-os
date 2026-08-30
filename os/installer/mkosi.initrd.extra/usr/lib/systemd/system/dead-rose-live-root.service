@@ -1,8 +1,7 @@
 [Unit]
-Description=Mount Dead Rose installer live root
+Description=Validate Dead Rose installer live root
 DefaultDependencies=no
-After=systemd-udevd.service systemd-udev-trigger.service
-Wants=systemd-udev-trigger.service
+RequiresMountsFor=/run/dead-rose-iso /sysroot
 Before=initrd-root-fs.target
 OnFailure=emergency.target
 OnFailureJobMode=replace-irreversibly

@@ -2,7 +2,7 @@
 set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 command -v rg >/dev/null || { echo "MISSING rg: install ripgrep (https://github.com/BurntSushi/ripgrep)" >&2; exit 1; }
-required=(VERSION DESIGN.md os/mkosi.conf os/mkosi.repart/10-esp.conf os/mkosi.repart/20-root-a.conf os/mkosi.repart/30-root-b.conf os/mkosi.repart/40-state.conf os/installer/grub-bootstrap.cfg os/installer/grub.cfg os/installer/mkosi.initrd.conf os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.service.d/dead-rose-console.conf os/systemd/dead-rose-core.service os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service apps/shell/src-tauri/tauri.conf.json apps/installer/src-tauri/tauri.conf.json tests/integration/installer-iso.sh tests/integration/live-root.sh tests/boot/installer-iso-smoke.sh)
+required=(VERSION DESIGN.md os/mkosi.conf os/mkosi.repart/10-esp.conf os/mkosi.repart/20-root-a.conf os/mkosi.repart/30-root-b.conf os/mkosi.repart/40-state.conf os/installer/grub-bootstrap.cfg os/installer/grub.cfg os/installer/mkosi.initrd.conf os/installer/mkosi.initrd.extra/etc/fstab os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.service.d/dead-rose-console.conf os/systemd/dead-rose-core.service os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service apps/shell/src-tauri/tauri.conf.json apps/installer/src-tauri/tauri.conf.json tests/integration/installer-iso.sh tests/integration/live-root.sh tests/boot/installer-iso-smoke.sh)
 for path in "${required[@]}"; do [[ -f "$project_dir/$path" ]] || { echo "Missing $path" >&2; exit 1; }; done
 if rg -n "localStorage|sessionStorage|run_command|Command::new\(.*sh" "$project_dir/apps" "$project_dir/crates"; then echo "Forbidden runtime pattern found" >&2; exit 1; fi
 if rg -n '^Output=.*[/\\]' "$project_dir/os" --glob mkosi.conf; then echo "mkosi Output must be a filename without path components" >&2; exit 1; fi
@@ -87,6 +87,7 @@ grub_config="$project_dir/os/installer/grub.cfg"
 grub_bootstrap="$project_dir/os/installer/grub-bootstrap.cfg"
 live_root="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root"
 live_root_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service"
+initrd_fstab="$project_dir/os/installer/mkosi.initrd.extra/etc/fstab"
 installer_unit="$project_dir/os/systemd/dead-rose-installer.service"
 
 [[ -x "$live_root" ]] || { echo "Dead Rose initrd live-root helper must be executable" >&2; exit 1; }
@@ -97,6 +98,7 @@ rg -q 'if=pflash.*firmware_code' "$project_dir/tests/boot/installer-iso-smoke.sh
 rg -q 'if=pflash.*firmware_vars' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must use a writable OVMF VARS image" >&2; exit 1; }
 if rg -q -- '-bios' "$project_dir/tests/boot/installer-iso-smoke.sh"; then echo "installer ISO smoke test must not load 4M OVMF through legacy -bios" >&2; exit 1; fi
 rg -q 'systemctl status initrd-switch-root.service' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must collect switch-root diagnostics in emergency mode" >&2; exit 1; }
+rg -q 'live root mount validation completed successfully' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must observe validated systemd-owned live-root mounts" >&2; exit 1; }
 rg -q 'search --no-floppy --label DEAD_ROSE_INSTALLER --set=root' "$grub_config" || { echo "GRUB must locate installer media by filesystem label" >&2; exit 1; }
 rg -q 'menuentry "Dead Rose OS Installer"' "$grub_config" || { echo "GRUB must provide the installer menu entry" >&2; exit 1; }
 rg -q 'configfile .*boot/grub/grub.cfg' "$grub_bootstrap" || { echo "embedded GRUB bootstrap must load the external menu" >&2; exit 1; }
@@ -109,12 +111,16 @@ if rg -q '\(cd0\)|boot=live' "$grub_config"; then
   echo "GRUB must not depend on cd0 numbering or the unused Debian live-boot path" >&2
   exit 1
 fi
-rg -q 'media_label=.*DEAD_ROSE_INSTALLER' "$live_root" || { echo "initrd must use the installer filesystem label" >&2; exit 1; }
-rg -q '/dev/disk/by-label/' "$live_root" || { echo "initrd must locate media through udev filesystem labels" >&2; exit 1; }
-if rg -q '/dev/sr0' "$live_root"; then echo "initrd must not hard-code optical device names" >&2; exit 1; fi
+rg -q '^LABEL=DEAD_ROSE_INSTALLER[[:space:]]+/run/dead-rose-iso' "$initrd_fstab" || { echo "initrd must locate installer media by filesystem label" >&2; exit 1; }
+[[ "$(rg -o 'x-initrd\.mount' "$initrd_fstab" | wc -l | tr -d ' ')" == 2 ]] || { echo "both installer mounts must be owned by the initrd mount transaction" >&2; exit 1; }
+rg -q 'x-systemd\.device-timeout=60s' "$initrd_fstab" || { echo "installer media mount must tolerate delayed device discovery" >&2; exit 1; }
+rg -q 'x-systemd\.requires-mounts-for=/run/dead-rose-iso' "$initrd_fstab" || { echo "live root mount must depend on its ISO backing mount" >&2; exit 1; }
+if rg -q '/dev/sr0' "$initrd_fstab" "$live_root"; then echo "initrd must not hard-code optical device names" >&2; exit 1; fi
+if rg -q '^[[:space:]]*mount[[:space:]]' "$live_root"; then echo "live-root helper must leave mount ownership to systemd" >&2; exit 1; fi
 rg -q 'mounted root does not provide /sbin/init' "$live_root" || { echo "initrd must validate the target OS tree before switch-root" >&2; exit 1; }
 rg -q 'installer root is missing switch-root mount point' "$iso_build" || { echo "ISO build must prepare systemd switch-root mount points" >&2; exit 1; }
 rg -q 'Before=initrd-root-fs.target' "$live_root_unit" || { echo "live-root mount must complete before initrd-root-fs.target" >&2; exit 1; }
+rg -q 'RequiresMountsFor=/run/dead-rose-iso /sysroot' "$live_root_unit" || { echo "live-root validation must require both initrd mounts" >&2; exit 1; }
 rg -q 'RuntimeDirectory=dead-rose-cage' "$installer_unit" || { echo "installer Cage service must create its runtime directory" >&2; exit 1; }
 rg -q 'Environment=XDG_RUNTIME_DIR=/run/dead-rose-cage' "$installer_unit" || { echo "installer Cage service must set XDG_RUNTIME_DIR" >&2; exit 1; }
 rg -q 'Requires=systemd-logind.service' "$installer_unit" || { echo "installer Cage service must expose logind failures as a hard dependency" >&2; exit 1; }

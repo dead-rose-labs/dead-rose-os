@@ -72,7 +72,7 @@ for _ in {1..240}; do
       verbose_selected=1
     fi
   fi
-  if rg -q 'dead-rose-live-root: live root mounted successfully' "$log"; then root_seen=1; fi
+  if rg -q 'dead-rose-live-root: live root mount validation completed successfully' "$log"; then root_seen=1; fi
   if rg -q 'Started .*Dead Rose OS Installer|Started dead-rose-installer\.service' "$log"; then installer_seen=1; fi
 
   if [[ "$emergency_seen" -eq 0 ]] && rg -q 'Press Enter for system maintenance' "$log"; then
