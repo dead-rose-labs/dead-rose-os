@@ -96,6 +96,7 @@ installer_unit="$project_dir/os/systemd/dead-rose-installer.service"
 rg -q 'if=pflash.*firmware_code' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must load OVMF CODE through pflash" >&2; exit 1; }
 rg -q 'if=pflash.*firmware_vars' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must use a writable OVMF VARS image" >&2; exit 1; }
 if rg -q -- '-bios' "$project_dir/tests/boot/installer-iso-smoke.sh"; then echo "installer ISO smoke test must not load 4M OVMF through legacy -bios" >&2; exit 1; fi
+rg -q 'systemctl status initrd-switch-root.service' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must collect switch-root diagnostics in emergency mode" >&2; exit 1; }
 rg -q 'search --no-floppy --label DEAD_ROSE_INSTALLER --set=root' "$grub_config" || { echo "GRUB must locate installer media by filesystem label" >&2; exit 1; }
 rg -q 'menuentry "Dead Rose OS Installer"' "$grub_config" || { echo "GRUB must provide the installer menu entry" >&2; exit 1; }
 rg -q 'configfile .*boot/grub/grub.cfg' "$grub_bootstrap" || { echo "embedded GRUB bootstrap must load the external menu" >&2; exit 1; }

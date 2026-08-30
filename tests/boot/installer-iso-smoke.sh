@@ -23,8 +23,12 @@ done
 
 runtime_dir="$(mktemp -d)"
 log="$runtime_dir/qemu.log"
+serial_input="$runtime_dir/serial.in"
 firmware_vars="$runtime_dir/OVMF_VARS.fd"
 cp -- "$firmware_vars_template" "$firmware_vars"
+mkfifo "$serial_input"
+# Open both ends before QEMU so neither side blocks while the process starts.
+exec 4<>"$serial_input"
 qemu_pid=""
 monitor_port=$((23000 + ($$ % 1000)))
 cleanup() {
@@ -32,6 +36,7 @@ cleanup() {
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true
   fi
+  exec 4>&-
   rm -rf -- "$runtime_dir"
 }
 trap cleanup EXIT
@@ -50,13 +55,14 @@ qemu-system-x86_64 \
   -serial stdio \
   -monitor "tcp:127.0.0.1:${monitor_port},server=on,wait=off" \
   -no-reboot \
-  -no-shutdown >"$log" 2>&1 &
+  -no-shutdown <"$serial_input" >"$log" 2>&1 &
 qemu_pid="$!"
 
 grub_seen=0
 verbose_selected=0
 root_seen=0
 installer_seen=0
+emergency_seen=0
 for _ in {1..240}; do
   if rg -q 'Dead Rose OS Installer' "$log"; then grub_seen=1; fi
   if [[ "$grub_seen" -eq 1 && "$verbose_selected" -eq 0 ]]; then
@@ -68,6 +74,23 @@ for _ in {1..240}; do
   fi
   if rg -q 'dead-rose-live-root: live root mounted successfully' "$log"; then root_seen=1; fi
   if rg -q 'Started .*Dead Rose OS Installer|Started dead-rose-installer\.service' "$log"; then installer_seen=1; fi
+
+  if [[ "$emergency_seen" -eq 0 ]] && rg -q 'Press Enter for system maintenance' "$log"; then
+    emergency_seen=1
+    printf '\n' >&4
+    sleep 2
+    printf '%s\n' \
+      'systemctl status initrd-switch-root.service --no-pager -l' \
+      'journalctl -b -u initrd-switch-root.service --no-pager -o cat' \
+      'findmnt --mountpoint /sysroot || true' \
+      'findmnt --mountpoint /run/dead-rose-iso || true' \
+      'ls -ld /sysroot /sysroot/dev /sysroot/proc /sysroot/run /sysroot/sys' \
+      'ls -l /sysroot/etc/os-release /sysroot/usr/lib/os-release /sysroot/sbin/init /sysroot/usr/sbin/init' >&4
+    sleep 5
+    echo "installer boot smoke: emergency mode reached; switch-root diagnostics follow" >&2
+    tail -n 300 "$log" >&2
+    exit 1
+  fi
 
   if [[ "$grub_seen" -eq 1 && "$root_seen" -eq 1 && "$installer_seen" -eq 1 ]]; then
     echo "installer boot smoke: OK - GRUB, live root, switch-root and installer service reached"
