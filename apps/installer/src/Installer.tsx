@@ -14,13 +14,21 @@ import {
   cn,
 } from "@dead-rose/ui";
 
-type Disk = { device: string; model: string; sizeBytes: number; removable: boolean };
-type InstallRequest = { device: string; hostname: string; username: string; password: string; confirmation: string };
+type Disk = { device: string; stableId: string; model: string; sizeBytes: number; removable: boolean };
+type InstallRequest = {
+  device: string;
+  stableId: string;
+  hostname: string;
+  username: string;
+  password: string;
+  confirmation: string;
+};
 type InstallEvent = { phase: string; message: string };
 type CommandError = { code?: string; message?: string };
 
 const installerErrors: Record<string, string> = {
   disk_enumeration_failed: "Installation disks could not be enumerated. Check the installer service.",
+  installer_media_unavailable: "The installer cannot verify its boot media. Recreate or reconnect the installation media.",
   confirmation_required: "Type ERASE to confirm the selected disk will be overwritten.",
   invalid_configuration: "Hostname or administrator details are invalid. Review the highlighted fields.",
   disk_too_small: "The selected disk is too small. Choose a disk with at least 32 GiB.",
@@ -31,6 +39,11 @@ const installerErrors: Record<string, string> = {
   manifest_unavailable: "The release manifest is unavailable. Recreate the installation media.",
   invalid_manifest: "The release manifest is invalid. Recreate the installation media.",
   image_write_failed: "Dead Rose OS could not be written and synchronized. Check the target disk and try again.",
+  installation_engine_failed: "The installation engine could not write Dead Rose OS. Inspect the installer journal.",
+  installation_in_progress: "Another installation is already in progress.",
+  stable_disk_identity_missing: "The selected disk does not expose a stable hardware identity and cannot be erased safely.",
+  stable_disk_identity_changed: "The selected disk identity changed. Scan disks again before installing.",
+  state_partition_missing: "The installed STATE partition could not be identified on the selected disk.",
   state_initialization_failed: "Persistent system state could not be initialized. Check the target disk.",
   administrator_creation_failed: "The administrator account could not be created. Check the installation log.",
   hostname_configuration_failed: "The system identity could not be saved. Check the installation log.",
@@ -70,6 +83,7 @@ export function Installer() {
   const [installPhase, setInstallPhase] = useState("Preparing installation…");
   const [request, setRequest] = useState<InstallRequest>({
     device: "",
+    stableId: "",
     hostname: "dead-rose",
     username: "admin",
     password: "",
@@ -181,7 +195,9 @@ export function Installer() {
                     disks.map((disk) => (
                       <button
                         key={disk.device}
-                        onClick={() => update("device", disk.device)}
+                        onClick={() =>
+                          setRequest((current) => ({ ...current, device: disk.device, stableId: disk.stableId }))
+                        }
                         className={cn(
                           "flex min-h-16 items-center gap-4 rounded-[var(--radius-control)] border p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           request.device === disk.device
@@ -351,7 +367,7 @@ function AdminStep({
         <Actions
           onBack={onBack}
           onNext={onNext}
-          nextDisabled={request.username.length < 2 || request.password.length < 12}
+          nextDisabled={!/^[a-z_][a-z0-9_-]{1,31}$/.test(request.username) || request.password.length < 12}
         />
       </Panel>
     </form>

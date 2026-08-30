@@ -1,20 +1,15 @@
-use dead_rose_installer_core::{
-    Disk, InstallerError, create_administrator, enumerate_disks as list_disks, validate_disk,
-    verify_payload, write_image,
-};
+use dead_rose_system_types::{INSTALLER_SOCKET, InstallDisk, InstallerRequest, InstallerResponse};
 use serde::{Deserialize, Serialize};
-use std::{
-    env,
-    path::{Path, PathBuf},
-    process::Command,
-    thread,
-    time::Duration,
+use std::{env, path::PathBuf};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    net::UnixStream,
 };
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallRequest {
-    device: PathBuf,
+    stable_id: PathBuf,
     hostname: String,
     username: String,
     password: String,
@@ -24,206 +19,122 @@ struct InstallRequest {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallEvent {
-    phase: &'static str,
-    message: &'static str,
+    phase: String,
+    message: String,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CommandError {
-    code: &'static str,
+    code: String,
     message: String,
 }
 
-fn failure(code: &'static str, message: impl Into<String>) -> CommandError {
-    CommandError {
-        code,
-        message: message.into(),
+#[tauri::command]
+async fn enumerate_disks() -> Result<Vec<InstallDisk>, CommandError> {
+    match request_once(InstallerRequest::EnumerateDisks).await? {
+        InstallerResponse::Disks { disks } => Ok(disks),
+        InstallerResponse::Error { code, message } => Err(CommandError { code, message }),
+        _ => Err(protocol_error()),
     }
 }
 
 #[tauri::command]
-fn enumerate_disks() -> Result<Vec<Disk>, CommandError> {
-    list_disks().map_err(|error| failure("disk_enumeration_failed", error.to_string()))
-}
-
-#[tauri::command]
-fn install(
+async fn install(
     request: InstallRequest,
     progress: tauri::ipc::Channel<InstallEvent>,
 ) -> Result<(), CommandError> {
-    if request.confirmation != "ERASE" {
-        return Err(failure(
-            "confirmation_required",
-            "Explicit erase confirmation is required.",
-        ));
-    }
-    if !is_valid_hostname(&request.hostname)
-        || request.username.len() < 2
-        || request.password.len() < 12
-    {
-        return Err(failure(
-            "invalid_configuration",
-            "Hostname or administrator details are invalid.",
-        ));
-    }
-    let installer_media = PathBuf::from(
-        env::var("DEAD_ROSE_INSTALLER_MEDIA")
-            .unwrap_or_else(|_| "/dev/disk/by-label/DEAD_ROSE_INSTALLER".into()),
-    );
-    progress
-        .send(InstallEvent {
-            phase: "target_validation",
-            message: "Validating the selected disk…",
-        })
-        .map_err(|error| failure("progress_channel_failed", error.to_string()))?;
-    let disk = list_disks()
-        .map_err(|error| failure("disk_enumeration_failed", error.to_string()))?
-        .into_iter()
-        .find(|disk| disk.device == request.device)
-        .ok_or_else(|| {
-            failure(
-                "target_not_found",
-                "The selected disk is no longer available.",
-            )
-        })?;
-    validate_disk(&disk, &installer_media).map_err(|error| match error {
-        InstallerError::DiskTooSmall => failure("disk_too_small", error.to_string()),
-        InstallerError::InstallerMedia => failure("installer_media_selected", error.to_string()),
-        _ => failure("target_validation_failed", error.to_string()),
-    })?;
-    let payload = PathBuf::from(
-        env::var("DEAD_ROSE_PAYLOAD")
-            .unwrap_or_else(|_| "/usr/lib/dead-rose-installer/dead-rose-os.raw".into()),
-    );
-    let digest_path = payload.with_extension("raw.sha256");
-    progress
-        .send(InstallEvent {
-            phase: "payload_verification",
-            message: "Verifying the operating-system payload…",
-        })
-        .map_err(|error| failure("progress_channel_failed", error.to_string()))?;
-    let expected = std::fs::read_to_string(digest_path)
-        .map_err(|error| failure("manifest_unavailable", error.to_string()))?
-        .split_whitespace()
-        .next()
-        .ok_or_else(|| failure("invalid_manifest", "The release manifest is empty."))?
-        .to_owned();
-    verify_payload(&payload, &expected)
-        .map_err(|error| failure("payload_verification_failed", error.to_string()))?;
-    progress
-        .send(InstallEvent {
-            phase: "image_write",
-            message: "Writing and synchronizing Dead Rose OS…",
-        })
-        .map_err(|error| failure("progress_channel_failed", error.to_string()))?;
-    write_image(&payload, &request.device)
-        .map_err(|error| failure("image_write_failed", error.to_string()))?;
-    let state_root = PathBuf::from(
-        env::var("DEAD_ROSE_STATE_MOUNT")
-            .unwrap_or_else(|_| "/run/dead-rose-installer/state".into()),
-    );
-    let _ = Command::new("partprobe").arg(&request.device).status();
-    let state_device = Path::new("/dev/disk/by-partlabel/STATE");
-    for _ in 0..50 {
-        if state_device.exists() {
-            break;
-        }
-        thread::sleep(Duration::from_millis(100));
-    }
-    progress
-        .send(InstallEvent {
-            phase: "state_initialization",
-            message: "Initializing persistent system state…",
-        })
-        .map_err(|error| failure("progress_channel_failed", error.to_string()))?;
-    std::fs::create_dir_all(&state_root)
-        .map_err(|error| failure("state_initialization_failed", error.to_string()))?;
-    mount_state(state_device, &state_root)
-        .map_err(|error| failure("state_initialization_failed", error))?;
-    progress
-        .send(InstallEvent {
-            phase: "administrator_creation",
-            message: "Creating the Dead Rose administrator…",
-        })
-        .map_err(|error| failure("progress_channel_failed", error.to_string()))?;
-    create_administrator(&state_root, &request.username, request.password.as_bytes())
-        .map_err(|error| failure("administrator_creation_failed", error.to_string()))?;
-    progress
-        .send(InstallEvent {
-            phase: "system_identity",
-            message: "Applying the system identity…",
-        })
-        .map_err(|error| failure("progress_channel_failed", error.to_string()))?;
-    std::fs::write(
-        state_root.join("hostname"),
-        format!("{}\n", request.hostname),
+    let stream = connect().await?;
+    let (read, mut write) = stream.into_split();
+    write_request(
+        &mut write,
+        &InstallerRequest::Install {
+            stable_id: request.stable_id,
+            hostname: request.hostname,
+            username: request.username,
+            password: request.password,
+            confirmation: request.confirmation,
+        },
     )
-    .map_err(|error| failure("hostname_configuration_failed", error.to_string()))?;
-    unmount_state(&state_root).map_err(|error| failure("state_sync_failed", error))?;
-    progress
-        .send(InstallEvent {
-            phase: "complete",
-            message: "Installation complete.",
-        })
-        .map_err(|error| failure("progress_channel_failed", error.to_string()))?;
-    Ok(())
-}
-
-fn is_valid_hostname(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 63
-        && !value.starts_with('-')
-        && !value.ends_with('-')
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+    .await?;
+    let mut lines = BufReader::new(read).lines();
+    while let Some(line) = lines.next_line().await.map_err(transport_error)? {
+        match serde_json::from_str::<InstallerResponse>(&line).map_err(protocol_transport_error)? {
+            InstallerResponse::Progress { phase, message } => progress
+                .send(InstallEvent { phase, message })
+                .map_err(|error| CommandError {
+                    code: "progress_channel_failed".into(),
+                    message: error.to_string(),
+                })?,
+            InstallerResponse::Complete => return Ok(()),
+            InstallerResponse::Error { code, message } => {
+                return Err(CommandError { code, message });
+            }
+            _ => return Err(protocol_error()),
+        }
+    }
+    Err(CommandError {
+        code: "backend_disconnected".into(),
+        message: "The privileged installer backend disconnected.".into(),
+    })
 }
 
 #[tauri::command]
-fn restart() -> Result<(), CommandError> {
-    restart_system().map_err(|error| failure("restart_failed", error))
+async fn restart() -> Result<(), CommandError> {
+    match request_once(InstallerRequest::Restart).await? {
+        InstallerResponse::Restarting => Ok(()),
+        InstallerResponse::Error { code, message } => Err(CommandError { code, message }),
+        _ => Err(protocol_error()),
+    }
 }
 
-#[cfg(target_os = "linux")]
-fn mount_state(source: &Path, target: &Path) -> Result<(), String> {
-    use nix::mount::{MsFlags, mount};
-    mount(
-        Some(source),
-        target,
-        Some("ext4"),
-        MsFlags::MS_NODEV | MsFlags::MS_NOSUID,
-        None::<&str>,
-    )
-    .map_err(|error| error.to_string())
+async fn request_once(request: InstallerRequest) -> Result<InstallerResponse, CommandError> {
+    let mut stream = connect().await?;
+    write_request(&mut stream, &request).await?;
+    let mut line = String::new();
+    BufReader::new(stream)
+        .read_line(&mut line)
+        .await
+        .map_err(transport_error)?;
+    serde_json::from_str(&line).map_err(protocol_transport_error)
 }
 
-#[cfg(not(target_os = "linux"))]
-fn mount_state(_: &Path, _: &Path) -> Result<(), String> {
-    Err("installer_requires_linux".into())
+async fn connect() -> Result<UnixStream, CommandError> {
+    let socket =
+        env::var("DEAD_ROSE_INSTALLER_SOCKET").unwrap_or_else(|_| INSTALLER_SOCKET.to_owned());
+    UnixStream::connect(socket).await.map_err(transport_error)
 }
 
-#[cfg(target_os = "linux")]
-fn unmount_state(target: &Path) -> Result<(), String> {
-    nix::mount::umount(target).map_err(|error| error.to_string())
+async fn write_request(
+    write: &mut (impl AsyncWrite + Unpin),
+    request: &InstallerRequest,
+) -> Result<(), CommandError> {
+    write
+        .write_all(&serde_json::to_vec(request).map_err(protocol_transport_error)?)
+        .await
+        .map_err(transport_error)?;
+    write.write_all(b"\n").await.map_err(transport_error)
 }
 
-#[cfg(not(target_os = "linux"))]
-fn unmount_state(_: &Path) -> Result<(), String> {
-    Err("installer_requires_linux".into())
+fn transport_error(error: std::io::Error) -> CommandError {
+    CommandError {
+        code: "backend_unavailable".into(),
+        message: error.to_string(),
+    }
 }
 
-#[cfg(target_os = "linux")]
-fn restart_system() -> Result<(), String> {
-    use nix::sys::reboot::{RebootMode, reboot};
-    reboot(RebootMode::RB_AUTOBOOT)
-        .map(|_| ())
-        .map_err(|error| error.to_string())
+fn protocol_transport_error(error: serde_json::Error) -> CommandError {
+    CommandError {
+        code: "backend_protocol_error".into(),
+        message: error.to_string(),
+    }
 }
 
-#[cfg(not(target_os = "linux"))]
-fn restart_system() -> Result<(), String> {
-    Err("restart_requires_linux".into())
+fn protocol_error() -> CommandError {
+    CommandError {
+        code: "backend_protocol_error".into(),
+        message: "The installer backend returned an unexpected response.".into(),
+    }
 }
 
 fn main() {

@@ -528,12 +528,26 @@ dependencies = [
 name = "dead-rose-installer"
 version = "0.1.0"
 dependencies = [
- "dead-rose-installer-core",
- "nix",
+ "dead-rose-system-types",
  "serde",
- "sha2",
+ "serde_json",
  "tauri",
  "tauri-build",
+ "tokio",
+]
+
+[[package]]
+name = "dead-rose-installer-agent"
+version = "0.1.0"
+dependencies = [
+ "dead-rose-installer-core",
+ "dead-rose-system-types",
+ "nix",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-journald",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -541,6 +555,7 @@ name = "dead-rose-installer-core"
 version = "0.1.0"
 dependencies = [
  "dead-rose-auth",
+ "dead-rose-system-types",
  "serde",
  "sha2",
  "tempfile",
@@ -555,6 +570,13 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "dead-rose-session"
+version = "0.1.0"
+dependencies = [
+ "nix",
 ]
 
 [[package]]

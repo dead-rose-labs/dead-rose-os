@@ -1,23 +1,14 @@
 use dead_rose_auth::{AuthError, CredentialStore};
-use serde::{Deserialize, Serialize};
+use dead_rose_system_types::InstallDisk;
 use sha2::{Digest, Sha256};
 use std::{
-    fs::{File, OpenOptions},
-    io::{self, BufReader, BufWriter, Read, Write},
-    path::{Path, PathBuf},
+    fs::File,
+    io::{self, BufReader, Read},
+    path::Path,
 };
 use thiserror::Error;
 
 pub const MINIMUM_DISK_BYTES: u64 = 32 * 1024 * 1024 * 1024;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct Disk {
-    pub device: PathBuf,
-    pub model: String,
-    pub size_bytes: u64,
-    pub removable: bool,
-}
 
 #[derive(Debug, Error)]
 pub enum InstallerError {
@@ -35,8 +26,8 @@ pub enum InstallerError {
     Auth(#[from] AuthError),
 }
 
-pub fn validate_disk(disk: &Disk, installer_media: &Path) -> Result<(), InstallerError> {
-    if disk.device == installer_media {
+pub fn validate_disk(disk: &InstallDisk, installer_media: &Path) -> Result<(), InstallerError> {
+    if disk.device == installer_media || disk.stable_id == installer_media {
         return Err(InstallerError::InstallerMedia);
     }
     if disk.size_bytes < MINIMUM_DISK_BYTES {
@@ -63,16 +54,6 @@ pub fn verify_payload(path: &Path, expected_sha256: &str) -> Result<(), Installe
     }
 }
 
-pub fn write_image(payload: &Path, target: &Path) -> Result<(), InstallerError> {
-    let mut source = BufReader::new(File::open(payload)?);
-    let target_file = OpenOptions::new().write(true).open(target)?;
-    let mut destination = BufWriter::new(target_file);
-    io::copy(&mut source, &mut destination)?;
-    destination.flush()?;
-    destination.get_ref().sync_all()?;
-    Ok(())
-}
-
 pub fn create_administrator(
     state_root: &Path,
     username: &str,
@@ -84,7 +65,7 @@ pub fn create_administrator(
 }
 
 #[cfg(target_os = "linux")]
-pub fn enumerate_disks() -> Result<Vec<Disk>, InstallerError> {
+pub fn enumerate_disks() -> Result<Vec<InstallDisk>, InstallerError> {
     let mut disks = Vec::new();
     for entry in std::fs::read_dir("/sys/block")? {
         let entry = entry?;
@@ -106,8 +87,11 @@ pub fn enumerate_disks() -> Result<Vec<Disk>, InstallerError> {
             .unwrap_or_default()
             .trim()
             == "1";
-        disks.push(Disk {
-            device: PathBuf::from("/dev").join(name.as_ref()),
+        let device = std::path::PathBuf::from("/dev").join(name.as_ref());
+        let stable_id = stable_device_id(&device).unwrap_or_else(|| device.clone());
+        disks.push(InstallDisk {
+            device,
+            stable_id,
             model,
             size_bytes: sectors.saturating_mul(512),
             removable,
@@ -116,8 +100,27 @@ pub fn enumerate_disks() -> Result<Vec<Disk>, InstallerError> {
     Ok(disks)
 }
 
+#[cfg(target_os = "linux")]
+fn stable_device_id(device: &Path) -> Option<std::path::PathBuf> {
+    let canonical = std::fs::canonicalize(device).ok()?;
+    let mut candidates = std::fs::read_dir("/dev/disk/by-id")
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| std::fs::canonicalize(path).ok().as_ref() == Some(&canonical))
+        .filter(|path| {
+            !path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.contains("-part"))
+        })
+        .collect::<Vec<_>>();
+    candidates.sort();
+    candidates.into_iter().next()
+}
+
 #[cfg(not(target_os = "linux"))]
-pub fn enumerate_disks() -> Result<Vec<Disk>, InstallerError> {
+pub fn enumerate_disks() -> Result<Vec<InstallDisk>, InstallerError> {
     Ok(Vec::new())
 }
 
@@ -127,8 +130,9 @@ mod tests {
     use std::fs;
     #[test]
     fn rejects_small_disk_and_installer_media() {
-        let disk = Disk {
+        let disk = InstallDisk {
             device: "/dev/test".into(),
+            stable_id: "/dev/disk/by-id/test".into(),
             model: "Disposable".into(),
             size_bytes: MINIMUM_DISK_BYTES - 1,
             removable: false,
@@ -137,7 +141,7 @@ mod tests {
             validate_disk(&disk, Path::new("/dev/iso")),
             Err(InstallerError::DiskTooSmall)
         ));
-        let disk = Disk {
+        let disk = InstallDisk {
             size_bytes: MINIMUM_DISK_BYTES,
             ..disk
         };
