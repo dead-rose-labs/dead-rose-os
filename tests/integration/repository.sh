@@ -99,6 +99,10 @@ if rg -q -- '-bios' "$project_dir/tests/boot/installer-iso-smoke.sh"; then echo 
 rg -q 'search --no-floppy --label DEAD_ROSE_INSTALLER --set=root' "$grub_config" || { echo "GRUB must locate installer media by filesystem label" >&2; exit 1; }
 rg -q 'menuentry "Dead Rose OS Installer"' "$grub_config" || { echo "GRUB must provide the installer menu entry" >&2; exit 1; }
 rg -q 'configfile .*boot/grub/grub.cfg' "$grub_bootstrap" || { echo "embedded GRUB bootstrap must load the external menu" >&2; exit 1; }
+if rg -q 'set[[:space:]]+prefix=.*\$root' "$grub_bootstrap"; then
+  echo "standalone GRUB must keep prefix on its memdisk so platform modules remain available" >&2
+  exit 1
+fi
 rg -q 'grub-bootstrap.cfg' "$iso_build" || { echo "standalone GRUB must embed the bootstrap config" >&2; exit 1; }
 if rg -q '\(cd0\)|boot=live' "$grub_config"; then
   echo "GRUB must not depend on cd0 numbering or the unused Debian live-boot path" >&2
