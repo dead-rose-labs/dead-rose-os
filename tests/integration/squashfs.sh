@@ -32,7 +32,12 @@ ok=1
 for directory in dev proc run sys; do
   grep -Eq " squashfs-root/$directory/?$" "$listing" || fail "squashfs is missing switch-root mount point /$directory"
 done
-grep -Eq ' squashfs-root/sbin/init( -> .*)?$' "$listing" || fail "squashfs is missing /sbin/init"
+if ! grep -Eq ' squashfs-root/sbin/init( -> .*)?$' "$listing"; then
+  if ! grep -Eq ' squashfs-root/sbin -> /?usr/sbin$' "$listing" || \
+     ! grep -Eq ' squashfs-root/usr/sbin/init( -> .*)?$' "$listing"; then
+    fail "squashfs is missing /sbin/init (directly or through merged-/usr)"
+  fi
+fi
 grep -Eq ' squashfs-root/etc/os-release( -> .*)?$' "$listing" || fail "squashfs is missing /etc/os-release"
 grep -Eq ' squashfs-root/usr/lib/os-release$' "$listing" || fail "squashfs is missing /usr/lib/os-release"
 
