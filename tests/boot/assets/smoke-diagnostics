@@ -2,6 +2,15 @@
 set -u
 
 echo "DEAD_ROSE_SMOKE_DIAGNOSTICS_BEGIN"
+for unit in \
+  greetd.service \
+  dead-rose-installer-backend.service \
+  installer-session-ready.service \
+  install-driver.service; do
+  if systemctl is-failed --quiet "$unit"; then
+    echo "DEAD_ROSE_FAILED_UNIT $unit"
+  fi
+done
 systemctl --failed --no-pager || true
 loginctl list-sessions --no-pager || true
 ps -eo user,pid,ppid,args | grep -E 'greetd|cage|dead-rose' || true
