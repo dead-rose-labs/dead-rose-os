@@ -86,6 +86,9 @@ for _ in {1..240}; do
       'systemctl list-dependencies initrd-switch-root.target --no-pager --all' \
       'journalctl -b -u initrd-switch-root.service --no-pager -o cat' \
       'ls -l /usr/lib/dead-rose-initrd/mount-live-root /usr/lib/systemd/system/sysroot.mount /usr/lib/systemd/system/run-dead\\x2drose\\x2diso.mount || true' \
+      'lsblk -o NAME,TYPE,FSTYPE,LABEL,MODEL || true' \
+      'ls -l /dev/disk/by-label /dev/sr* || true' \
+      'cat /proc/modules' \
       'findmnt --mountpoint /usr || true' \
       'findmnt --mountpoint /sysroot || true' \
       'findmnt --mountpoint /run/dead-rose-iso || true' \

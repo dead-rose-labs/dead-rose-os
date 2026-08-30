@@ -68,6 +68,10 @@ if ! rg -q '^SplitArtifacts=kernel,initrd$' "$project_dir/os/installer/mkosi.con
   echo "the installer image must explicitly export mkosi kernel and initrd artifacts" >&2
   exit 1
 fi
+for module in isofs squashfs loop ahci sr_mod sd_mod usb-storage uas xhci-pci virtio_blk virtio_pci; do
+  rg -q "^(KernelInitrdModules=|[[:space:]]+)$module$" "$project_dir/os/installer/mkosi.conf" \
+    || { echo "installer initrd must include storage module: $module" >&2; exit 1; }
+done
 for artifact in installer_kernel installer_initrd; do
   if ! rg -q "sudo install .*\\\$$artifact" "$iso_build"; then
     echo "the mkosi $artifact split artifact must be staged with sudo install" >&2
