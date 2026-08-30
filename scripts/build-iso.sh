@@ -101,6 +101,7 @@ fi
 if ! sudo test -e "$installer_root/etc/os-release" && ! sudo test -L "$installer_root/etc/os-release"; then
   fatal "installer root does not provide /etc/os-release"
 fi
+sudo test -s "$installer_root/usr/lib/os-release" || fatal "installer root does not provide non-empty /usr/lib/os-release"
 
 # Fail fast on the sensitive file policy before anything gets packed: the
 # source rootfs must already carry /etc/shadow and /etc/gshadow as

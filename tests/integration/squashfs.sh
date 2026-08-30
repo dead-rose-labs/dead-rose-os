@@ -32,8 +32,9 @@ ok=1
 for directory in dev proc run sys; do
   grep -Eq " squashfs-root/$directory/?$" "$listing" || fail "squashfs is missing switch-root mount point /$directory"
 done
-grep -Eq ' squashfs-root/sbin/init$' "$listing" || fail "squashfs is missing /sbin/init"
-grep -Eq ' squashfs-root/etc/os-release$' "$listing" || fail "squashfs is missing /etc/os-release"
+grep -Eq ' squashfs-root/sbin/init( -> .*)?$' "$listing" || fail "squashfs is missing /sbin/init"
+grep -Eq ' squashfs-root/etc/os-release( -> .*)?$' "$listing" || fail "squashfs is missing /etc/os-release"
+grep -Eq ' squashfs-root/usr/lib/os-release$' "$listing" || fail "squashfs is missing /usr/lib/os-release"
 
 # The live root must never be packed as owned by the unprivileged builder
 # account (GitHub runner uid). Unprivileged packing rewrites every file to the

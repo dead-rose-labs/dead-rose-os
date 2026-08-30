@@ -40,6 +40,7 @@ mount -n -t squashfs -o loop,ro "$squashfs" "$root_mount"
 [[ -x "$root_mount/usr/lib/systemd/systemd" ]] || fail "mounted root does not contain systemd"
 [[ -e "$root_mount/sbin/init" || -L "$root_mount/sbin/init" ]] || fail "mounted root does not provide /sbin/init"
 [[ -e "$root_mount/etc/os-release" || -L "$root_mount/etc/os-release" ]] || fail "mounted root does not provide /etc/os-release"
+[[ -s "$root_mount/usr/lib/os-release" ]] || fail "mounted root does not provide non-empty /usr/lib/os-release"
 for directory in dev proc run sys; do
   [[ -d "$root_mount/$directory" ]] || fail "mounted root is missing switch-root mount point: /$directory"
 done
