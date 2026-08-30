@@ -81,7 +81,7 @@ for _ in {1..240}; do
     sleep 2
     printf '%s\n' \
       'systemctl status initrd-switch-root.service --no-pager -l' \
-      'systemctl status sysroot.mount run-dead\\x2drose\\x2diso.mount --no-pager -l || true' \
+      'systemctl status sysroot.mount run-dead\\x2drose\\x2diso.mount run-dead\\x2drose\\x2droot\\x2dro.mount run-dead\\x2drose\\x2droot\\x2drw.mount --no-pager -l || true' \
       'systemctl cat dead-rose-live-root.service initrd-switch-root.target --no-pager || true' \
       'systemctl list-dependencies initrd-switch-root.target --no-pager --all' \
       'journalctl -b -u initrd-switch-root.service --no-pager -o cat' \
@@ -92,6 +92,8 @@ for _ in {1..240}; do
       'findmnt --mountpoint /usr || true' \
       'findmnt --mountpoint /sysroot || true' \
       'findmnt --mountpoint /run/dead-rose-iso || true' \
+      'findmnt --mountpoint /run/dead-rose-root-ro || true' \
+      'findmnt --mountpoint /run/dead-rose-root-rw || true' \
       'ls -ld /sysroot /sysroot/dev /sysroot/proc /sysroot/run /sysroot/sys' \
       'ls -l /sysroot/etc/os-release /sysroot/usr/lib/os-release /sysroot/sbin/init /sysroot/usr/sbin/init' >&4
     sleep 5

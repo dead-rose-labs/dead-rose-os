@@ -1,15 +1,15 @@
 [Unit]
-Description=Mount Dead Rose installer live root
+Description=Mount Dead Rose installer writable live root
 DefaultDependencies=no
-Requires=run-dead\x2drose\x2diso.mount
-After=run-dead\x2drose\x2diso.mount
+Requires=run-dead\x2drose\x2droot\x2dro.mount run-dead\x2drose\x2droot\x2drw.mount dead-rose-live-overlay-prepare.service
+After=run-dead\x2drose\x2droot\x2dro.mount run-dead\x2drose\x2droot\x2drw.mount dead-rose-live-overlay-prepare.service
 Before=initrd-root-fs.target
 OnFailure=emergency.target
 OnFailureJobMode=replace-irreversibly
 
 [Mount]
-What=/run/dead-rose-iso/live/rootfs.squashfs
+What=overlay
 Where=/sysroot
-Type=squashfs
-Options=loop,ro
+Type=overlay
+Options=lowerdir=/run/dead-rose-root-ro,upperdir=/run/dead-rose-root-rw/upper,workdir=/run/dead-rose-root-rw/work
 TimeoutSec=60s

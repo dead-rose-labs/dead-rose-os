@@ -4,6 +4,7 @@ set -euo pipefail
 readonly media_mount="${DEAD_ROSE_MEDIA_MOUNT:-/run/dead-rose-iso}"
 readonly root_mount="${DEAD_ROSE_ROOT_MOUNT:-/sysroot}"
 readonly squashfs="${media_mount}/live/rootfs.squashfs"
+readonly write_probe="${root_mount}/.dead-rose-live-root-write-probe"
 
 log() {
   echo "dead-rose-live-root: $*"
@@ -25,5 +26,7 @@ findmnt --mountpoint "$root_mount" >/dev/null || fail "live root is not mounted 
 for directory in dev proc run sys; do
   [[ -d "$root_mount/$directory" ]] || fail "mounted root is missing switch-root mount point: /$directory"
 done
+: > "$write_probe" || fail "mounted root is not writable"
+rm -f -- "$write_probe"
 
 log "live root mount validation completed successfully"

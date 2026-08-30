@@ -1,0 +1,13 @@
+[Unit]
+Description=Prepare Dead Rose installer writable overlay
+DefaultDependencies=no
+Requires=run-dead\x2drose\x2droot\x2drw.mount
+After=run-dead\x2drose\x2droot\x2drw.mount
+Before=sysroot.mount initrd-root-fs.target
+OnFailure=emergency.target
+OnFailureJobMode=replace-irreversibly
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mkdir -p /run/dead-rose-root-rw/upper /run/dead-rose-root-rw/work
+RemainAfterExit=yes

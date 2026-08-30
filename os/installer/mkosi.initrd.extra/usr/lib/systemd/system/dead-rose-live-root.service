@@ -1,8 +1,8 @@
 [Unit]
 Description=Validate Dead Rose installer live root
 DefaultDependencies=no
-Requires=run-dead\x2drose\x2diso.mount sysroot.mount
-After=run-dead\x2drose\x2diso.mount sysroot.mount
+Requires=run-dead\x2drose\x2diso.mount run-dead\x2drose\x2droot\x2dro.mount run-dead\x2drose\x2droot\x2drw.mount sysroot.mount
+After=run-dead\x2drose\x2diso.mount run-dead\x2drose\x2droot\x2dro.mount run-dead\x2drose\x2droot\x2drw.mount sysroot.mount
 Before=initrd-root-fs.target
 OnFailure=emergency.target
 OnFailureJobMode=replace-irreversibly

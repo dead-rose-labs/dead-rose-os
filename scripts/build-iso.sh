@@ -52,6 +52,9 @@ build_initrd_overlay() {
     usr/lib/dead-rose-initrd/mount-live-root \
     usr/lib/systemd/system/dead-rose-live-root.service \
     'usr/lib/systemd/system/run-dead\x2drose\x2diso.mount' \
+    'usr/lib/systemd/system/run-dead\x2drose\x2droot\x2dro.mount' \
+    'usr/lib/systemd/system/run-dead\x2drose\x2droot\x2drw.mount' \
+    usr/lib/systemd/system/dead-rose-live-overlay-prepare.service \
     usr/lib/systemd/system/sysroot.mount \
     usr/lib/systemd/system/initrd-root-fs.target.d/dead-rose-live-root.conf \
     usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf; do

@@ -36,5 +36,6 @@ grep -Fq 'dead-rose-live-root: live root mount validation completed successfully
 [[ -e "$root_mount/etc/os-release" || -L "$root_mount/etc/os-release" ]]
 [[ -s "$root_mount/usr/lib/os-release" ]]
 for directory in dev proc run sys; do [[ -d "$root_mount/$directory" ]]; done
+[[ ! -e "$root_mount/.dead-rose-live-root-write-probe" ]]
 
 echo "live-root integration check: OK"
