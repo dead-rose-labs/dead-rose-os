@@ -67,14 +67,20 @@ jobs:
           }
           last_phase="$(rg -o 'DEAD_ROSE_INSTALL_PROGRESS [a-z_]+' "$installer_log" 2>/dev/null | tail -n 1 | cut -d' ' -f2 || true)"
           last_phase="${last_phase:-none}"
+          grub_ready="$(marker_state DEAD_ROSE_GRUB_READY "$installer_log")"
+          initrd_ready="$(marker_state DEAD_ROSE_INITRD_READY "$installer_log")"
+          live_root_ready="$(marker_state DEAD_ROSE_LIVE_ROOT_READY "$installer_log")"
           ui_ready="$(marker_state DEAD_ROSE_INSTALLER_UI_READY "$installer_log")"
           install_complete="$(marker_state DEAD_ROSE_INSTALL_COMPLETE "$installer_log")"
           shell_ready="$(marker_state DEAD_ROSE_SHELL_READY "$installed_log")"
-          summary="UI ready: $ui_ready; install complete: $install_complete; installed shell ready: $shell_ready; last install phase: $last_phase"
+          summary="GRUB: $grub_ready; initrd: $initrd_ready; live root: $live_root_ready; UI: $ui_ready; install complete: $install_complete; installed shell: $shell_ready; last phase: $last_phase"
           echo "::notice title=Dead Rose installer smoke::$summary"
           {
             echo "## Installer smoke"
             echo
+            echo "- GRUB reached: $grub_ready"
+            echo "- Initrd reached: $initrd_ready"
+            echo "- Live root ready: $live_root_ready"
             echo "- UI ready: $ui_ready"
             echo "- Install complete: $install_complete"
             echo "- Installed shell ready: $shell_ready"

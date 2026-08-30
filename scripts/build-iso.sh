@@ -50,6 +50,7 @@ build_initrd_overlay() {
 
   for required in \
     usr/lib/dead-rose-initrd/mount-live-root \
+    usr/lib/systemd/system/dead-rose-initrd-ready.service \
     usr/lib/systemd/system/dead-rose-live-root.service \
     'usr/lib/systemd/system/run-dead\x2drose\x2diso.mount' \
     'usr/lib/systemd/system/run-dead\x2drose\x2droot\x2dro.mount' \

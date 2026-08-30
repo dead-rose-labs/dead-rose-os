@@ -1,0 +1,11 @@
+[Unit]
+Description=Report Dead Rose installer initrd readiness
+DefaultDependencies=no
+Before=initrd-root-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/echo DEAD_ROSE_INITRD_READY
+RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=journal+console

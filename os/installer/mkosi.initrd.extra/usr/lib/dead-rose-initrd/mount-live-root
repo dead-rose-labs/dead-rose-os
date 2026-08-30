@@ -30,3 +30,4 @@ done
 rm -f -- "$write_probe"
 
 log "live root mount validation completed successfully"
+echo "DEAD_ROSE_LIVE_ROOT_READY"
