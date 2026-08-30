@@ -20,9 +20,13 @@ udevadm() {
 mount() {
   local target="${@: -1}"
   if [[ "$*" == *" -t squashfs "* ]]; then
-    mkdir -p "$target/usr/lib/systemd"
+    mkdir -p "$target/etc" "$target/usr/lib/systemd" "$target/usr/lib" "$target/sbin" \
+      "$target/dev" "$target/proc" "$target/run" "$target/sys"
     : > "$target/usr/lib/systemd/systemd"
     chmod 0755 "$target/usr/lib/systemd/systemd"
+    ln -s /usr/lib/systemd/systemd "$target/sbin/init"
+    : > "$target/usr/lib/os-release"
+    ln -s /usr/lib/os-release "$target/etc/os-release"
   fi
 }
 
@@ -36,5 +40,8 @@ output="$(
 )"
 grep -Fq 'dead-rose-live-root: live root mounted successfully' <<<"$output"
 [[ -x "$root_mount/usr/lib/systemd/systemd" ]]
+[[ -e "$root_mount/sbin/init" || -L "$root_mount/sbin/init" ]]
+[[ -e "$root_mount/etc/os-release" || -L "$root_mount/etc/os-release" ]]
+for directory in dev proc run sys; do [[ -d "$root_mount/$directory" ]]; done
 
 echo "live-root integration check: OK"

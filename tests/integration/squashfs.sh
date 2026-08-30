@@ -26,6 +26,15 @@ unsquashfs -lln "$squashfs" > "$listing" || { echo "squashfs check: unsquashfs -
 
 ok=1
 
+# systemd switch-root moves the initrd's API filesystems onto these paths. An
+# empty directory can disappear from a generated directory image, so verify the
+# paths survived packing into the immutable live root.
+for directory in dev proc run sys; do
+  grep -Eq " squashfs-root/$directory/?$" "$listing" || fail "squashfs is missing switch-root mount point /$directory"
+done
+grep -Eq ' squashfs-root/sbin/init$' "$listing" || fail "squashfs is missing /sbin/init"
+grep -Eq ' squashfs-root/etc/os-release$' "$listing" || fail "squashfs is missing /etc/os-release"
+
 # The live root must never be packed as owned by the unprivileged builder
 # account (GitHub runner uid). Unprivileged packing rewrites every file to the
 # invoking user, which is exactly the "Number of uids 1, runner (1001)" failure.

@@ -84,6 +84,24 @@ sudo chown 0:0 "$embedded_raw"
 sudo cp "$raw.sha256" "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.sha256"
 sudo ln -sf /usr/lib/systemd/system/dead-rose-installer.service "$installer_root/etc/systemd/system/graphical.target.wants/dead-rose-installer.service"
 
+# systemd moves the initrd API filesystems into these directories during
+# switch-root. mkosi directory images may omit empty mount points, so create
+# them explicitly before the read-only SquashFS is packed.
+sudo install -d -m0755 \
+  "$installer_root/dev" \
+  "$installer_root/proc" \
+  "$installer_root/run" \
+  "$installer_root/sys"
+for directory in dev proc run sys; do
+  sudo test -d "$installer_root/$directory" || fatal "installer root is missing switch-root mount point: /$directory"
+done
+if ! sudo test -e "$installer_root/sbin/init" && ! sudo test -L "$installer_root/sbin/init"; then
+  fatal "installer root does not provide /sbin/init"
+fi
+if ! sudo test -e "$installer_root/etc/os-release" && ! sudo test -L "$installer_root/etc/os-release"; then
+  fatal "installer root does not provide /etc/os-release"
+fi
+
 # Fail fast on the sensitive file policy before anything gets packed: the
 # source rootfs must already carry /etc/shadow and /etc/gshadow as
 # root:shadow 0640, matching the runner (non-builder) Ubuntu policy.
