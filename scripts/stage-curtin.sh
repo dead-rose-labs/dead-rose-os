@@ -43,7 +43,8 @@ run_privileged install -m0755 "$source_dir/bin/curtin" "$destination/usr/bin/cur
 run_privileged cp -a "$source_dir/curtin/." "$destination/usr/lib/python3/dist-packages/curtin/"
 run_privileged cp -a "$source_dir/helpers/." "$destination/usr/lib/curtin/helpers/"
 run_privileged find "$destination/usr/lib/python3/dist-packages/curtin" "$destination/usr/lib/curtin/helpers" -type d -exec chmod 0755 {} +
-run_privileged find "$destination/usr/lib/python3/dist-packages/curtin" "$destination/usr/lib/curtin/helpers" -type f -exec chmod 0644 {} +
+run_privileged find "$destination/usr/lib/python3/dist-packages/curtin" -type f -exec chmod 0644 {} +
+sudo chown -R 0:0 "$destination/usr/bin/curtin" "$destination/usr/lib/python3/dist-packages/curtin" "$destination/usr/lib/curtin/helpers"
 run_privileged test -x "$destination/usr/bin/curtin"
 
 echo "Staged Canonical Curtin commit $curtin_commit"

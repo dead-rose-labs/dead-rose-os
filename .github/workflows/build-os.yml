@@ -43,7 +43,9 @@ jobs:
         run: DEAD_ROSE_TEST_MARKERS=1 ./dr build
 
       - name: Build installer ISO
-        run: DEAD_ROSE_TEST_MARKERS=1 ./dr iso
+        run: |
+          set -euo pipefail
+          DEAD_ROSE_TEST_MARKERS=1 ./dr iso 2>&1 | tee build/logs/build-iso-full.log
 
       - name: Smoke-test installer boot
         run: ./dr installer-vm --smoke
