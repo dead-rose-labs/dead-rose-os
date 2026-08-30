@@ -1,0 +1,14 @@
+[Unit]
+Description=Dead Rose installer-session smoke marker
+After=greetd.service dead-rose-installer-backend.service
+Requires=greetd.service dead-rose-installer-backend.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/dead-rose-tests/session-ready installer
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=graphical.target
+

@@ -37,16 +37,22 @@ jobs:
         run: ./dr test
 
       - name: Build OS image
-        run: ./dr build
+        run: DEAD_ROSE_TEST_MARKERS=1 ./dr build
 
       - name: Build installer ISO
-        run: ./dr iso
+        run: DEAD_ROSE_TEST_MARKERS=1 ./dr iso
 
       - name: Smoke-test installer boot
         run: |
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
           ./tests/boot/installer-iso-smoke.sh "build/dead-rose-os-${version}-amd64.iso"
+
+      - name: Rebuild release artifacts without smoke instrumentation
+        run: |
+          ./dr clean
+          ./dr build
+          ./dr iso
 
       - name: Print build contents and sizes
         continue-on-error: true

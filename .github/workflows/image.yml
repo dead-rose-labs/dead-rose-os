@@ -8,6 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./dr bootstrap
-      - run: ./dr build
-      - run: ./dr iso
+      - run: DEAD_ROSE_TEST_MARKERS=1 ./dr build
+      - run: DEAD_ROSE_TEST_MARKERS=1 ./dr iso
       - run: ./tests/boot/installer-iso-smoke.sh build/dead-rose-os-0.1.0-amd64.iso

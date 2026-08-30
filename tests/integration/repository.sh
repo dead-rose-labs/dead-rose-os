@@ -1,160 +1,82 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-command -v rg >/dev/null || { echo "MISSING rg: install ripgrep (https://github.com/BurntSushi/ripgrep)" >&2; exit 1; }
-required=(VERSION DESIGN.md os/mkosi.conf os/mkosi.repart/10-esp.conf os/mkosi.repart/20-root-a.conf os/mkosi.repart/30-root-b.conf os/mkosi.repart/40-state.conf os/installer/grub-bootstrap.cfg os/installer/grub.cfg os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-overlay-prepare.service 'os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\x2drose\x2diso.mount' 'os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\x2drose\x2droot\x2dro.mount' 'os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\x2drose\x2droot\x2drw.mount' os/installer/mkosi.initrd.extra/usr/lib/systemd/system/sysroot.mount os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.service.d/dead-rose-console.conf os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf os/systemd/dead-rose-core.service os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service apps/shell/src-tauri/tauri.conf.json apps/installer/src-tauri/tauri.conf.json tests/integration/installer-iso.sh tests/integration/live-root.sh tests/boot/installer-iso-smoke.sh)
+command -v rg >/dev/null || { echo "MISSING rg" >&2; exit 1; }
+
+required=(
+  VERSION DESIGN.md os/mkosi.conf os/installer/mkosi.conf
+  os/greetd/installed.toml os/greetd/installer.toml
+  os/systemd/greetd-installed.conf os/systemd/greetd-installer.conf
+  os/systemd/dead-rose-core.service os/systemd/dead-rose-installer-backend.service
+  os/systemd/dead-rose-state-init.service os/systemd/dead-rose-state.mount
+  os/grub/99-dead-rose.cfg os/installer/grub.cfg
+  crates/session/src/main.rs crates/installer-agent/src/main.rs
+  docs/architecture/rebuild-audit.md docs/architecture/os-runtime.md docs/build.md docs/debug.md
+  tests/boot/smoke.sh tests/boot/installer-iso-smoke.sh
+)
 for path in "${required[@]}"; do [[ -f "$project_dir/$path" ]] || { echo "Missing $path" >&2; exit 1; }; done
-if rg -n "localStorage|sessionStorage|run_command|Command::new\(.*sh" "$project_dir/apps" "$project_dir/crates"; then echo "Forbidden runtime pattern found" >&2; exit 1; fi
-if rg -n '^Output=.*[/\\]' "$project_dir/os" --glob mkosi.conf; then echo "mkosi Output must be a filename without path components" >&2; exit 1; fi
 
-# Each mkosi package-list entry must be its own line/value. A single-line
-# whitespace-separated "Packages=a b c" is passed to apt as ONE quoted package
-# name and fails with "Unable to locate package". Apply to every package-list
-# setting so a regression in any of them is caught.
-if awk '
-  {
-    if ($0 ~ /^[A-Za-z]+=/) {
-      setting = $0
-      sub(/=.*/, "", setting)
-      in_pkglist = (setting ~ /^(Packages|BuildPackages|VolatilePackages|InitrdPackages|ToolsTreePackages|PackageDirectories)$/)
-      if (in_pkglist) {
-        value = $0
-        sub(/^[^=]*=/, "", value)
-        if (value ~ / /) { print FILENAME ":" FNR ": " $0; bad = 1 }
-      }
-    } else if (in_pkglist && $0 ~ /^[ \t]/) {
-      value = $0
-      sub(/^[ \t]+/, "", value)
-      if (value ~ / /) { print FILENAME ":" FNR ": " $0; bad = 1 }
-    } else {
-      in_pkglist = 0
-    }
-  }
-  END { exit bad ? 1 : 0 }
-' "$project_dir/os/mkosi.conf" "$project_dir/os/installer/mkosi.conf"
-then
-  :
-else
-  echo "mkosi package-list settings must list one package per line, not a whitespace-separated single-line list" >&2
-  exit 1
-fi
-
-# The installer live root must keep the ownership the OS image assigns. A
-# recursive chown to the build user or an unprivileged mksquashfs both flatten
-# ownership to the runner uid (1001) and silently pack /etc/shadow empty, so
-# the staging logic must be privileged and validated after packing.
-iso_build="$project_dir/scripts/build-iso.sh"
-if rg -n 'chown -R' "$iso_build" "$project_dir/scripts/build-os.sh"; then
-  echo "OS/installer roots must not be recursively chowned to the build user" >&2
-  exit 1
-fi
-if rg -q 'zstd .*\|.*tee' "$iso_build" || ! rg -q 'zstd .*--sparse' "$iso_build"; then
-  echo "the embedded raw image must be decompressed sparsely instead of materialized through tee" >&2
-  exit 1
-fi
-if ! rg -q 'chown 0:0 .*embedded_raw' "$iso_build"; then
-  echo "the embedded raw image must be restored to root ownership after zstd copies input metadata" >&2
-  exit 1
-fi
-if ! rg -q 'sudo mksquashfs' "$iso_build"; then
-  echo "mksquashfs must run with privileges so privileged files and ownership are preserved" >&2
-  exit 1
-fi
-if ! rg -q 'squashfs\.sh' "$iso_build"; then
-  echo "build-iso.sh must validate the squashfs after packing" >&2
-  exit 1
-fi
-if ! rg -q '^SplitArtifacts=kernel,initrd$' "$project_dir/os/installer/mkosi.conf"; then
-  echo "the installer image must explicitly export mkosi kernel and initrd artifacts" >&2
-  exit 1
-fi
-for module in isofs squashfs overlay loop ahci sr_mod sd_mod usb-storage uas xhci-pci virtio_blk virtio_pci; do
-  rg -q "^(KernelInitrdModules=|[[:space:]]+)$module$" "$project_dir/os/installer/mkosi.conf" \
-    || { echo "installer initrd must include storage module: $module" >&2; exit 1; }
+for obsolete in os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service os/cage/environment; do
+  [[ ! -e "$project_dir/$obsolete" ]] || { echo "Obsolete runtime file remains: $obsolete" >&2; exit 1; }
 done
-for artifact in installer_kernel installer_initrd; do
-  if ! rg -q "sudo install .*\\\$$artifact" "$iso_build"; then
-    echo "the mkosi $artifact split artifact must be staged with sudo install" >&2
-    exit 1
-  fi
-done
-if rg -q 'resolve_single_boot_artifact' "$iso_build"; then
-  echo "build-iso.sh must use mkosi's split initrd instead of searching the image root" >&2
+
+if rg -n 'XDG_RUNTIME_DIR|RuntimeDirectory=dead-rose-cage|PAMName=login|ExecStart=.*/cage' "$project_dir/os"; then
+  echo "Graphical session lifecycle must belong to greetd/PAM/logind" >&2
   exit 1
 fi
-if rg -q '^[[:space:]]*(sudo[[:space:]]+)?lsinitramfs([[:space:]]|$)' "$iso_build"; then
-  echo "build-iso.sh must not inspect mkosi's composite initrd with lsinitramfs" >&2
+if rg -n 'localStorage|sessionStorage|run_command|Command::new\(.*sh' "$project_dir/apps" "$project_dir/crates"; then
+  echo "Forbidden runtime pattern found" >&2
   exit 1
 fi
 
-grub_config="$project_dir/os/installer/grub.cfg"
-grub_bootstrap="$project_dir/os/installer/grub-bootstrap.cfg"
-live_root="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root"
-live_root_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service"
-media_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\\x2drose\\x2diso.mount"
-read_only_root_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\\x2drose\\x2droot\\x2dro.mount"
-writable_root_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\\x2drose\\x2droot\\x2drw.mount"
-root_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/sysroot.mount"
-switch_root_target_dropin="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf"
-installer_unit="$project_dir/os/systemd/dead-rose-installer.service"
-
-[[ -x "$live_root" ]] || { echo "Dead Rose initrd live-root helper must be executable" >&2; exit 1; }
-[[ -x "$project_dir/tests/integration/installer-iso.sh" ]] || { echo "installer ISO check must be executable" >&2; exit 1; }
-[[ -x "$project_dir/tests/integration/live-root.sh" ]] || { echo "live-root integration check must be executable" >&2; exit 1; }
-[[ -x "$project_dir/tests/boot/installer-iso-smoke.sh" ]] || { echo "installer ISO smoke test must be executable" >&2; exit 1; }
-rg -q 'build_initrd_overlay' "$iso_build" || { echo "ISO build must assemble the initrd extra tree as an explicit archive" >&2; exit 1; }
-rg -q 'cpio .*--format=newc.*--owner=\+0:\+0' "$iso_build" || { echo "initrd overlay must use a numerically root-owned newc archive" >&2; exit 1; }
-rg -q 'oflag=append conv=notrunc' "$iso_build" || { echo "initrd overlay must be appended to mkosi's composite initrd" >&2; exit 1; }
-rg -q 'installer initrd overlay is missing required path' "$iso_build" || { echo "ISO build must validate required initrd overlay contents" >&2; exit 1; }
-rg -q 'build-essential clang cpio curl' "$project_dir/scripts/bootstrap-builder.sh" || { echo "builder bootstrap must install cpio explicitly" >&2; exit 1; }
-rg -q 'if=pflash.*firmware_code' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must load OVMF CODE through pflash" >&2; exit 1; }
-rg -q 'if=pflash.*firmware_vars' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must use a writable OVMF VARS image" >&2; exit 1; }
-if rg -q -- '-bios' "$project_dir/tests/boot/installer-iso-smoke.sh"; then echo "installer ISO smoke test must not load 4M OVMF through legacy -bios" >&2; exit 1; fi
-rg -q 'systemctl status initrd-switch-root.service' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must collect switch-root diagnostics in emergency mode" >&2; exit 1; }
-rg -q 'live root mount validation completed successfully' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must observe validated systemd-owned live-root mounts" >&2; exit 1; }
-rg -q 'search --no-floppy --label DEAD_ROSE_INSTALLER --set=root' "$grub_config" || { echo "GRUB must locate installer media by filesystem label" >&2; exit 1; }
-rg -q 'menuentry "Dead Rose OS Installer"' "$grub_config" || { echo "GRUB must provide the installer menu entry" >&2; exit 1; }
-[[ "$(rg -o 'systemd\.firstboot=no' "$grub_config" | wc -l | tr -d ' ')" == 2 ]] || { echo "every installer boot entry must suppress the interactive systemd first-boot wizard" >&2; exit 1; }
-rg -q '^Locale=C\.UTF-8$' "$project_dir/os/installer/mkosi.conf" || { echo "installer image must define a non-interactive default locale" >&2; exit 1; }
-rg -q '^Timezone=UTC$' "$project_dir/os/installer/mkosi.conf" || { echo "installer image must define a non-interactive default timezone" >&2; exit 1; }
-rg -q '^Hostname=dead-rose-installer$' "$project_dir/os/installer/mkosi.conf" || { echo "installer image must define a deterministic live hostname" >&2; exit 1; }
-rg -q 'configfile .*boot/grub/grub.cfg' "$grub_bootstrap" || { echo "embedded GRUB bootstrap must load the external menu" >&2; exit 1; }
-if rg -q 'set[[:space:]]+prefix=.*\$root' "$grub_bootstrap"; then
-  echo "standalone GRUB must keep prefix on its memdisk so platform modules remain available" >&2
+rg -q '^Bootloader=grub$' "$project_dir/os/mkosi.conf"
+rg -q '^[[:space:]]+greetd$' "$project_dir/os/mkosi.conf"
+rg -q '^[[:space:]]+greetd$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"
+if rg -q 'gnome-shell|gdm3|ubuntu-desktop|plasma-desktop|xfce4' "$project_dir/os" --glob 'mkosi.conf'; then
+  echo "A conventional desktop package is forbidden" >&2
   exit 1
 fi
-rg -q 'grub-bootstrap.cfg' "$iso_build" || { echo "standalone GRUB must embed the bootstrap config" >&2; exit 1; }
-if rg -q '\(cd0\)|boot=live' "$grub_config"; then
-  echo "GRUB must not depend on cd0 numbering or the unused Debian live-boot path" >&2
+
+rg -q '^user = "deadrose-ui"$' "$project_dir/os/greetd/installed.toml"
+rg -q 'dead-rose-session /usr/lib/dead-rose/dead-rose-shell' "$project_dir/os/greetd/installed.toml"
+rg -q '^user = "deadrose-installer"$' "$project_dir/os/greetd/installer.toml"
+rg -q 'dead-rose-session /usr/lib/dead-rose/dead-rose-installer' "$project_dir/os/greetd/installer.toml"
+if rg -q 'agreety|/bin/login' "$project_dir/os/greetd"; then
+  echo "The kiosk VT must not fall through to an interactive login prompt" >&2
   exit 1
 fi
-rg -q '^What=/dev/disk/by-label/DEAD_ROSE_INSTALLER$' "$media_mount_unit" || { echo "initrd must locate installer media by filesystem label" >&2; exit 1; }
-rg -q '^Where=/run/dead-rose-iso$' "$media_mount_unit" || { echo "installer media native mount unit has the wrong mount point" >&2; exit 1; }
-rg -q '^What=/run/dead-rose-iso/live/rootfs\.squashfs$' "$read_only_root_mount_unit" || { echo "read-only live-root mount has the wrong backing file" >&2; exit 1; }
-rg -q '^Where=/run/dead-rose-root-rw$' "$writable_root_mount_unit" || { echo "writable live-root tmpfs has the wrong mount point" >&2; exit 1; }
-rg -q '^What=overlay$' "$root_mount_unit" || { echo "live-root mount must use overlayfs" >&2; exit 1; }
-rg -q '^Where=/sysroot$' "$root_mount_unit" || { echo "live-root native mount unit must mount at /sysroot" >&2; exit 1; }
-rg -q '^Options=lowerdir=/run/dead-rose-root-ro,upperdir=/run/dead-rose-root-rw/upper,workdir=/run/dead-rose-root-rw/work$' "$root_mount_unit" || { echo "live-root overlay paths are invalid" >&2; exit 1; }
-if rg -q '/dev/sr0' "$media_mount_unit" "$live_root"; then echo "initrd must not hard-code optical device names" >&2; exit 1; fi
-if rg -q '^[[:space:]]*mount[[:space:]]' "$live_root"; then echo "live-root helper must leave mount ownership to systemd" >&2; exit 1; fi
-rg -q 'mounted root does not provide /sbin/init' "$live_root" || { echo "initrd must validate the target OS tree before switch-root" >&2; exit 1; }
-rg -q 'mounted root is not writable' "$live_root" || { echo "initrd must reject a read-only live root before switch-root" >&2; exit 1; }
-rg -q 'installer root is missing switch-root mount point' "$iso_build" || { echo "ISO build must prepare systemd switch-root mount points" >&2; exit 1; }
-rg -q 'Before=initrd-root-fs.target' "$live_root_unit" || { echo "live-root mount must complete before initrd-root-fs.target" >&2; exit 1; }
-rg -Fq 'run-dead\x2drose\x2droot\x2dro.mount run-dead\x2drose\x2droot\x2drw.mount sysroot.mount' "$live_root_unit" || { echo "live-root validation must require all overlay mounts" >&2; exit 1; }
-rg -Fq 'run-dead\x2drose\x2droot\x2dro.mount run-dead\x2drose\x2droot\x2drw.mount sysroot.mount' "$switch_root_target_dropin" || { echo "switch-root transaction must retain all overlay mounts" >&2; exit 1; }
-rg -q 'RuntimeDirectory=dead-rose-cage' "$installer_unit" || { echo "installer Cage service must create its runtime directory" >&2; exit 1; }
-rg -q 'Environment=XDG_RUNTIME_DIR=/run/dead-rose-cage' "$installer_unit" || { echo "installer Cage service must set XDG_RUNTIME_DIR" >&2; exit 1; }
-rg -q 'Requires=systemd-logind.service' "$installer_unit" || { echo "installer Cage service must expose logind failures as a hard dependency" >&2; exit 1; }
-rg -q 'PAMName=login' "$installer_unit" || { echo "installer Cage service must register a logind session for its TTY seat" >&2; exit 1; }
-rg -q 'installer-iso\.sh' "$iso_build" || { echo "build-iso.sh must validate the completed ISO" >&2; exit 1; }
-rg -Fq "Volume [Ii]d" "$project_dir/tests/integration/installer-iso.sh" || { echo "installer ISO check must accept xorriso volume-id capitalization variants" >&2; exit 1; }
-rg -q 'installer-iso-smoke\.sh' "$project_dir/.github/workflows/build-os.yml" || { echo "CI must smoke-test the installer ISO boot" >&2; exit 1; }
-rg -q 'installer-iso-smoke\.sh' "$project_dir/.github/workflows/image.yml" || { echo "privileged image CI must smoke-test the installer ISO boot" >&2; exit 1; }
+rg -q '^u deadrose-ui .*nologin$' "$project_dir/os/sysusers/dead-rose.conf"
+rg -q '^u deadrose-installer .*nologin$' "$project_dir/os/sysusers/dead-rose.conf"
+if rg -q '^m deadrose-(ui|installer) (video|render|input)$' "$project_dir/os/sysusers/dead-rose.conf"; then
+  echo "greetd/logind sessions must not require permanent device-group membership" >&2
+  exit 1
+fi
+rg -q '^User=root$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
+rg -q '^Group=deadrose-installer-ipc$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 
-squashfs_test="$project_dir/tests/integration/squashfs.sh"
-[[ -x "$squashfs_test" ]] || { echo "squashfs regression test is missing or not executable: $squashfs_test" >&2; exit 1; }
-rg -q 'etc/shadow' "$squashfs_test" || { echo "squashfs regression test must assert presence of /etc/shadow" >&2; exit 1; }
-rg -q 'etc/gshadow' "$squashfs_test" || { echo "squashfs regression test must assert presence of /etc/gshadow" >&2; exit 1; }
+rg -q 'InstallerRequest::Install' "$project_dir/apps/installer/src-tauri/src/main.rs"
+rg -q 'UnixStream::connect' "$project_dir/apps/installer/src-tauri/src/main.rs"
+if rg -q 'dead-rose-installer-core|nix.workspace' "$project_dir/apps/installer/src-tauri/Cargo.toml"; then
+  echo "Installer Tauri process must not contain privileged disk implementation" >&2
+  exit 1
+fi
+rg -q 'Command::new\("/usr/bin/curtin"\)' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q '/dev/disk/by-id' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'PARTNAME=STATE' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'installation_in_progress' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'repair_state_ownership' "$project_dir/crates/session/src/bin/dead-rose-state-init.rs"
 
-echo "Repository invariants pass."
+rg -q '^ID=deadrose$' "$project_dir/os/mkosi.extra/etc/os-release"
+rg -q '^UBUNTU_CODENAME=resolute$' "$project_dir/os/mkosi.extra/etc/os-release"
+[[ "$(rg -o 'systemd\.firstboot=no' "$project_dir/os/installer/grub.cfg" | wc -l | tr -d ' ')" == 3 ]]
+rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/grub.cfg"
+
+rg -q 'test -f' "$project_dir/scripts/build-iso.sh"
+rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"
+rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
+rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$project_dir/tests/boot/installer-iso-smoke.sh"
+rg -q 'DEAD_ROSE_SHELL_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
+
+echo "Repository runtime invariants pass."

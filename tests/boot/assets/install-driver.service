@@ -1,0 +1,14 @@
+[Unit]
+Description=Dead Rose disposable-disk install smoke driver
+After=installer-session-ready.service
+Requires=installer-session-ready.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/dead-rose-tests/install-driver.py
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=graphical.target
+

@@ -1,0 +1,14 @@
+[Unit]
+Description=Dead Rose installed-session smoke marker
+After=greetd.service dead-rose-core.service
+Requires=greetd.service dead-rose-core.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/dead-rose-tests/session-ready installed
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=graphical.target
+
