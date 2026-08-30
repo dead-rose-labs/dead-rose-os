@@ -2,6 +2,7 @@
 Description=Dead Rose disposable-disk install smoke driver
 After=installer-session-ready.service
 Requires=installer-session-ready.service
+OnFailure=dead-rose-smoke-diagnostics.service
 
 [Service]
 Type=oneshot
@@ -11,4 +12,3 @@ StandardError=journal+console
 
 [Install]
 WantedBy=graphical.target
-

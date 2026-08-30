@@ -11,8 +11,8 @@ case "$command" in
   bootstrap) exec "$project_dir/scripts/bootstrap-builder.sh" "$@" ;;
   build) exec "$project_dir/scripts/build-os.sh" ;;
   iso) exec "$project_dir/scripts/build-iso.sh" ;;
-  vm) exec "$project_dir/scripts/run-vm.sh" ;;
-  installer-vm) exec "$project_dir/scripts/run-installer-vm.sh" ;;
+  vm) exec "$project_dir/scripts/run-vm.sh" "$@" ;;
+  installer-vm) exec "$project_dir/scripts/run-installer-vm.sh" "$@" ;;
   test) exec "$project_dir/scripts/test.sh" ;;
   clean)
     build_dir="$project_dir/build"

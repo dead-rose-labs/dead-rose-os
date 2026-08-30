@@ -19,8 +19,10 @@ done
 
 runtime_dir="$(mktemp -d)"
 target="$runtime_dir/target.qcow2"
-installer_log="$runtime_dir/installer.log"
-installed_log="$runtime_dir/installed.log"
+smoke_log_dir="${DEAD_ROSE_SMOKE_LOG_DIR:-$(pwd)/build/logs/boot}"
+mkdir -p "$smoke_log_dir"
+installer_log="$smoke_log_dir/installer-serial.log"
+installed_log="$smoke_log_dir/installed-serial.log"
 firmware_vars="$runtime_dir/OVMF_VARS.fd"
 qemu-img create -q -f qcow2 "$target" 40G
 cp -- "$firmware_vars_template" "$firmware_vars"

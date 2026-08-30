@@ -17,7 +17,9 @@ done
 [[ -n "$firmware_code" ]] || { echo "OVMF firmware pair was not found" >&2; exit 1; }
 
 runtime_dir="$(mktemp -d)"
-log="$runtime_dir/qemu.log"
+smoke_log_dir="${DEAD_ROSE_SMOKE_LOG_DIR:-$(pwd)/build/logs/boot}"
+mkdir -p "$smoke_log_dir"
+log="$smoke_log_dir/installed-image-serial.log"
 firmware_vars="$runtime_dir/OVMF_VARS.fd"
 cp -- "$firmware_vars_template" "$firmware_vars"
 qemu_pid=""

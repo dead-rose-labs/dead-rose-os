@@ -1,0 +1,8 @@
+[Unit]
+Description=Emit Dead Rose boot-smoke diagnostics to the serial console
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/dead-rose-tests/smoke-diagnostics
+StandardOutput=journal+console
+StandardError=journal+console

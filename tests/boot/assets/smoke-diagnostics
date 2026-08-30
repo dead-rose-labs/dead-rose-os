@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+set -u
+
+echo "DEAD_ROSE_SMOKE_DIAGNOSTICS_BEGIN"
+systemctl --failed --no-pager || true
+loginctl list-sessions --no-pager || true
+ps -eo user,pid,ppid,args | grep -E 'greetd|cage|dead-rose' || true
+journalctl -b --no-pager -n 500 \
+  -u greetd.service \
+  -u dead-rose-core.service \
+  -u dead-rose-installer-backend.service \
+  -u dead-rose-session-ready.service \
+  -u installer-session-ready.service \
+  -u install-driver.service || true
+echo "DEAD_ROSE_SMOKE_DIAGNOSTICS_END"

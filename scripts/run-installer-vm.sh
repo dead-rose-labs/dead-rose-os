@@ -5,6 +5,13 @@ version="$(tr -d '[:space:]' < "$project_dir/VERSION")"
 iso="$project_dir/build/dead-rose-os-${version}-amd64.iso"
 target="$project_dir/build/installer-target.qcow2"
 [[ -f "$iso" ]] || { echo "Build the ISO first with ./dr iso" >&2; exit 1; }
+if [[ "${1:-}" == "--smoke" ]]; then
+  exec "$project_dir/tests/boot/installer-iso-smoke.sh" "$iso"
+fi
+if [[ "$#" -ne 0 ]]; then
+  echo "usage: ./dr installer-vm [--smoke]" >&2
+  exit 2
+fi
 [[ -f "$target" ]] || qemu-img create -f qcow2 "$target" 48G
 firmware="/usr/share/OVMF/OVMF_CODE_4M.fd"
 vars_template="/usr/share/OVMF/OVMF_VARS_4M.fd"

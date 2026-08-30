@@ -2,6 +2,7 @@
 Description=Dead Rose installer-session smoke marker
 After=greetd.service dead-rose-installer-backend.service
 Requires=greetd.service dead-rose-installer-backend.service
+OnFailure=dead-rose-smoke-diagnostics.service
 
 [Service]
 Type=oneshot
@@ -11,4 +12,3 @@ StandardError=journal+console
 
 [Install]
 WantedBy=graphical.target
-

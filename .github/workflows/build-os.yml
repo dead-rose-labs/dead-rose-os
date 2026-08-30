@@ -2,6 +2,9 @@ name: Build Dead Rose OS
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -43,16 +46,21 @@ jobs:
         run: DEAD_ROSE_TEST_MARKERS=1 ./dr iso
 
       - name: Smoke-test installer boot
-        run: |
-          set -euo pipefail
-          version="$(tr -d '[:space:]' < VERSION)"
-          ./tests/boot/installer-iso-smoke.sh "build/dead-rose-os-${version}-amd64.iso"
+        run: ./dr installer-vm --smoke
 
       - name: Rebuild release artifacts without smoke instrumentation
         run: |
-          ./dr clean
           ./dr build
           ./dr iso
+
+      - name: Upload build and runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dead-rose-os-diagnostics-${{ github.sha }}
+          path: build/logs/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Print build contents and sizes
         continue-on-error: true
@@ -88,10 +96,10 @@ jobs:
       - name: Upload installer ISO
         uses: actions/upload-artifact@v4
         with:
-          name: dead-rose-os-installer-${{ github.sha }}
+          name: dead-rose-os-amd64-${{ github.sha }}
           path: |
             ${{ steps.installer.outputs.iso }}
             ${{ steps.installer.outputs.checksum }}
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
           compression-level: 0

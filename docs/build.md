@@ -33,3 +33,5 @@ tests/boot/installer-iso-smoke.sh
 ```
 
 The first smoke test proves that greetd, Cage, the unprivileged installed shell and core service are active. The installer test boots the ISO with a disposable disk, drives the typed backend protocol, waits for installation completion, then boots the installed target and proves that the shell runs as `deadrose-ui`. CI rebuilds production artifacts without instrumentation before publishing them.
+
+The canonical CI invocation is `./dr installer-vm --smoke`. QEMU serial output and failure-triggered systemd/journal diagnostics are retained under `build/logs/boot/` and uploaded even when the workflow fails.
