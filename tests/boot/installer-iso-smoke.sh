@@ -82,8 +82,11 @@ for _ in {1..240}; do
     printf '%s\n' \
       'systemctl status initrd-switch-root.service --no-pager -l' \
       'systemctl status sysroot.mount run-dead\\x2drose\\x2diso.mount --no-pager -l || true' \
+      'systemctl cat dead-rose-live-root.service initrd-switch-root.target --no-pager || true' \
       'systemctl list-dependencies initrd-switch-root.target --no-pager --all' \
       'journalctl -b -u initrd-switch-root.service --no-pager -o cat' \
+      'ls -l /usr/lib/dead-rose-initrd/mount-live-root /usr/lib/systemd/system/sysroot.mount /usr/lib/systemd/system/run-dead\\x2drose\\x2diso.mount || true' \
+      'findmnt --mountpoint /usr || true' \
       'findmnt --mountpoint /sysroot || true' \
       'findmnt --mountpoint /run/dead-rose-iso || true' \
       'ls -ld /sysroot /sysroot/dev /sysroot/proc /sysroot/run /sysroot/sys' \

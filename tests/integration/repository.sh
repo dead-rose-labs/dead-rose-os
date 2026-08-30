@@ -87,6 +87,7 @@ grub_config="$project_dir/os/installer/grub.cfg"
 grub_bootstrap="$project_dir/os/installer/grub-bootstrap.cfg"
 live_root="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root"
 live_root_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service"
+initrd_config="$project_dir/os/installer/mkosi.initrd.conf"
 media_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\\x2drose\\x2diso.mount"
 root_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/sysroot.mount"
 switch_root_target_dropin="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf"
@@ -96,6 +97,7 @@ installer_unit="$project_dir/os/systemd/dead-rose-installer.service"
 [[ -x "$project_dir/tests/integration/installer-iso.sh" ]] || { echo "installer ISO check must be executable" >&2; exit 1; }
 [[ -x "$project_dir/tests/integration/live-root.sh" ]] || { echo "live-root integration check must be executable" >&2; exit 1; }
 [[ -x "$project_dir/tests/boot/installer-iso-smoke.sh" ]] || { echo "installer ISO smoke test must be executable" >&2; exit 1; }
+rg -q '^ExtraTrees=%D/mkosi\.initrd\.extra$' "$initrd_config" || { echo "default initrd extra tree must be anchored to mkosi's --directory path" >&2; exit 1; }
 rg -q 'if=pflash.*firmware_code' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must load OVMF CODE through pflash" >&2; exit 1; }
 rg -q 'if=pflash.*firmware_vars' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must use a writable OVMF VARS image" >&2; exit 1; }
 if rg -q -- '-bios' "$project_dir/tests/boot/installer-iso-smoke.sh"; then echo "installer ISO smoke test must not load 4M OVMF through legacy -bios" >&2; exit 1; fi
