@@ -1,0 +1,10 @@
+[terminal]
+vt = 1
+
+[default_session]
+command = "/usr/lib/dead-rose/dead-rose-session /usr/lib/dead-rose/dead-rose-shell"
+user = "deadrose-ui"
+
+[initial_session]
+command = "/usr/lib/dead-rose/dead-rose-session /usr/lib/dead-rose/dead-rose-shell"
+user = "deadrose-ui"

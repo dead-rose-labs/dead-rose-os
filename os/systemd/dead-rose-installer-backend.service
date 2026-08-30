@@ -1,0 +1,30 @@
+[Unit]
+Description=Dead Rose privileged installer backend
+After=local-fs.target systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Before=greetd.service
+
+[Service]
+Type=simple
+User=root
+Group=deadrose-installer-ipc
+ExecStart=/usr/lib/dead-rose/dead-rose-installer-agent
+Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.raw
+Environment=DEAD_ROSE_STATE_MOUNT=/run/dead-rose-installer/state
+Environment=DEAD_ROSE_INSTALLER_MEDIA=/dev/disk/by-label/DEAD_ROSE_INSTALLER
+Restart=on-failure
+RestartSec=3s
+RuntimeDirectory=dead-rose-installer
+RuntimeDirectoryMode=0750
+UMask=0007
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
+

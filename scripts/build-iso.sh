@@ -90,15 +90,27 @@ assert_shadow_policy() {
 }
 
 [[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
+for generated in "$installer_root" "$iso_root" "$project_dir/build/efi"; do
+  case "$generated" in
+    "$project_dir"/build/*) ;;
+    *) fatal "refusing unsafe generated directory: $generated" ;;
+  esac
+  if [[ -d "$generated" ]]; then
+    sudo find "$generated" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+  fi
+done
 mkdir -p "$iso_live" "$project_dir/build/logs"
 cd "$project_dir"
 
 mkosi --directory "$project_dir/os/installer" summary
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @dead-rose/installer build
-cargo build --release --locked -p dead-rose-installer
+cargo build --release --locked -p dead-rose-installer -p dead-rose-installer-agent -p dead-rose-session --bins
 require_regular_file "$project_dir/target/release/dead-rose-installer" "installer binary"
-require_regular_file "$project_dir/os/systemd/dead-rose-installer.service" "installer unit"
+require_regular_file "$project_dir/target/release/dead-rose-installer-agent" "installer backend"
+require_regular_file "$project_dir/target/release/dead-rose-session" "kiosk session supervisor"
+require_regular_file "$project_dir/os/systemd/dead-rose-installer-backend.service" "installer backend unit"
+require_regular_file "$project_dir/os/greetd/installer.toml" "installer greetd config"
 require_regular_file "$raw.zst" "compressed OS image"
 require_regular_file "$raw.sha256" "OS image checksum"
 sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_dir/build/logs/mkosi-installer.log"
@@ -108,8 +120,18 @@ sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_di
 # artifacts are written as root and nothing is recursively chowned to the build
 # user.
 sudo install -Dm755 "$project_dir/target/release/dead-rose-installer" "$installer_root/usr/lib/dead-rose/dead-rose-installer"
-sudo install -Dm644 "$project_dir/os/systemd/dead-rose-installer.service" "$installer_root/usr/lib/systemd/system/dead-rose-installer.service"
-sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc/systemd/system/graphical.target.wants"
+sudo install -Dm755 "$project_dir/target/release/dead-rose-installer-agent" "$installer_root/usr/lib/dead-rose/dead-rose-installer-agent"
+sudo install -Dm755 "$project_dir/target/release/dead-rose-session" "$installer_root/usr/lib/dead-rose/dead-rose-session"
+sudo install -Dm644 "$project_dir/os/systemd/dead-rose-installer-backend.service" "$installer_root/usr/lib/systemd/system/dead-rose-installer-backend.service"
+sudo install -Dm644 "$project_dir/os/systemd/greetd-installer.conf" "$installer_root/etc/systemd/system/greetd.service.d/dead-rose.conf"
+sudo install -Dm644 "$project_dir/os/greetd/installer.toml" "$installer_root/etc/greetd/config.toml"
+sudo install -Dm644 "$project_dir/os/sysusers/dead-rose.conf" "$installer_root/usr/lib/sysusers.d/dead-rose.conf"
+sudo install -Dm644 "$project_dir/os/tmpfiles/dead-rose.conf" "$installer_root/usr/lib/tmpfiles.d/dead-rose.conf"
+sudo install -Dm644 "$project_dir/os/mkosi.extra/etc/os-release" "$installer_root/usr/lib/os-release"
+sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.plymouth" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose.plymouth"
+sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.script" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose.script"
+sudo install -Dm644 "$project_dir/assets/brand/dead-rose-os-logo.png" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose-os-logo.png"
+sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc/systemd/system/graphical.target.wants" "$installer_root/etc/systemd/system/multi-user.target.wants" "$installer_root/usr/share/plymouth/themes"
 # Preserve zero-filled regions as holes. Piping through tee materializes the
 # nominal 25 GiB disk image and can exhaust the CI runner even though the raw
 # image is sparse.
@@ -119,7 +141,18 @@ sudo zstd --decompress --force --sparse "$raw.zst" -o "$embedded_raw"
 # ownership explicitly without recursively changing the mkosi root.
 sudo chown 0:0 "$embedded_raw"
 sudo cp "$raw.sha256" "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.sha256"
-sudo ln -sf /usr/lib/systemd/system/dead-rose-installer.service "$installer_root/etc/systemd/system/graphical.target.wants/dead-rose-installer.service"
+sudo ln -sf /usr/lib/systemd/system/greetd.service "$installer_root/etc/systemd/system/graphical.target.wants/greetd.service"
+sudo ln -sf /usr/lib/systemd/system/dead-rose-installer-backend.service "$installer_root/etc/systemd/system/multi-user.target.wants/dead-rose-installer-backend.service"
+sudo ln -sf /usr/lib/systemd/system/graphical.target "$installer_root/etc/systemd/system/default.target"
+sudo ln -sf /usr/share/plymouth/themes/dead-rose/dead-rose.plymouth "$installer_root/usr/share/plymouth/themes/default.plymouth"
+if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then
+  sudo install -Dm755 "$project_dir/tests/boot/assets/session-ready" "$installer_root/usr/lib/dead-rose-tests/session-ready"
+  sudo install -Dm755 "$project_dir/tests/boot/assets/install-driver.py" "$installer_root/usr/lib/dead-rose-tests/install-driver.py"
+  sudo install -Dm644 "$project_dir/tests/boot/assets/installer-session-ready.service" "$installer_root/usr/lib/systemd/system/installer-session-ready.service"
+  sudo install -Dm644 "$project_dir/tests/boot/assets/install-driver.service" "$installer_root/usr/lib/systemd/system/install-driver.service"
+  sudo ln -sf /usr/lib/systemd/system/installer-session-ready.service "$installer_root/etc/systemd/system/graphical.target.wants/installer-session-ready.service"
+  sudo ln -sf /usr/lib/systemd/system/install-driver.service "$installer_root/etc/systemd/system/graphical.target.wants/install-driver.service"
+fi
 
 # systemd moves the initrd API filesystems into these directories during
 # switch-root. mkosi directory images may omit empty mount points, so create

@@ -1,7 +1,8 @@
 [Unit]
 Description=Dead Rose core service
-After=local-fs.target
-Before=dead-rose-graphical.service
+Requires=dead-rose-state-init.service
+After=local-fs.target dead-rose-state-init.service
+Before=greetd.service
 
 [Service]
 Type=simple

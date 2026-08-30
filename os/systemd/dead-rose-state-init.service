@@ -1,0 +1,20 @@
+[Unit]
+Description=Apply persistent Dead Rose system identity
+Requires=var-lib-dead\x2drose.mount
+After=var-lib-dead\x2drose.mount
+Before=dead-rose-core.service greetd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/dead-rose/dead-rose-state-init
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/etc/hostname /var/lib/dead-rose/auth
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target
