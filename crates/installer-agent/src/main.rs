@@ -279,14 +279,8 @@ fn run_curtin(disk: &InstallDisk, payload: &Path) -> io::Result<()> {
     let runtime = Path::new("/run/dead-rose-installer");
     fs::create_dir_all(runtime)?;
     let config = runtime.join("curtin.yaml");
-    let disk_yaml = serde_json::to_string(&disk.stable_id)?;
-    let payload_uri = format!("dd-raw:{}", payload.display());
-    let payload_yaml = serde_json::to_string(&payload_uri)?;
-    let contents = format!(
-        "stages:\n  - early\n  - partitioning\nblock-meta:\n  devices:\n    - {disk_yaml}\nsources:\n  - {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
-    );
+    fs::write(&config, curtin_config(disk, payload)?)?;
     fs::create_dir_all("/var/log/dead-rose-installer")?;
-    fs::write(&config, contents)?;
     let status = Command::new("/usr/bin/curtin")
         .args(["-v", "install", "--config"])
         .arg(&config)
@@ -299,6 +293,15 @@ fn run_curtin(disk: &InstallDisk, payload: &Path) -> io::Result<()> {
     } else {
         Err(io::Error::other(format!("curtin exited with {status}")))
     }
+}
+
+fn curtin_config(disk: &InstallDisk, payload: &Path) -> io::Result<String> {
+    let disk_yaml = serde_json::to_string(&disk.stable_id)?;
+    let payload_uri = format!("file://{}", payload.display());
+    let payload_yaml = serde_json::to_string(&payload_uri)?;
+    Ok(format!(
+        "stages:\n  - early\n  - partitioning\nblock-meta:\n  devices:\n    - {disk_yaml}\nsources:\n  dead_rose_image:\n    type: dd-raw\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
+    ))
 }
 
 fn validate_stable_id(disk: &InstallDisk) -> Result<(), (&'static str, String)> {
@@ -491,8 +494,9 @@ fn restart_system() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_stable_id_shape, is_valid_hostname, is_valid_username};
+    use super::{curtin_config, has_stable_id_shape, is_valid_hostname, is_valid_username};
     use dead_rose_system_types::InstallDisk;
+    use std::path::Path;
 
     #[test]
     fn accepts_only_safe_hostnames() {
@@ -522,5 +526,20 @@ mod tests {
         assert!(!is_valid_username("Root"));
         assert!(!is_valid_username("1admin"));
         assert!(!is_valid_username("a"));
+    }
+
+    #[test]
+    fn generates_curtin_dd_image_config() {
+        let disk = InstallDisk {
+            device: "/dev/vda".into(),
+            stable_id: "/dev/disk/by-id/virtio-test".into(),
+            model: "test".into(),
+            size_bytes: 40 * 1024 * 1024 * 1024,
+            removable: false,
+        };
+        let config = curtin_config(&disk, Path::new("/payload/dead-rose.raw")).unwrap();
+        assert!(config.contains("type: dd-raw"));
+        assert!(config.contains("uri: \"file:///payload/dead-rose.raw\""));
+        assert!(config.contains("\"/dev/disk/by-id/virtio-test\""));
     }
 }

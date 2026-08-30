@@ -33,7 +33,12 @@ fi
 rg -q '^Bootloader=grub$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+greetd$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+greetd$' "$project_dir/os/installer/mkosi.conf"
-rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"
+if rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"; then
+  echo "Ubuntu 26.04 does not ship a curtin binary package; use the pinned source runtime" >&2
+  exit 1
+fi
+rg -q '^curtin_commit="[0-9a-f]{40}"$' "$project_dir/scripts/stage-curtin.sh"
+rg -q '^curtin_sha256="[0-9a-f]{64}"$' "$project_dir/scripts/stage-curtin.sh"
 if rg -q 'gnome-shell|gdm3|ubuntu-desktop|plasma-desktop|xfce4' "$project_dir/os" --glob 'mkosi.conf'; then
   echo "A conventional desktop package is forbidden" >&2
   exit 1
@@ -74,6 +79,7 @@ rg -q '^UBUNTU_CODENAME=resolute$' "$project_dir/os/mkosi.extra/etc/os-release"
 rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/grub.cfg"
 
 rg -q 'test -f' "$project_dir/scripts/build-iso.sh"
+rg -q 'stage-curtin.sh' "$project_dir/scripts/build-iso.sh"
 rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"
 rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$project_dir/tests/boot/installer-iso-smoke.sh"
