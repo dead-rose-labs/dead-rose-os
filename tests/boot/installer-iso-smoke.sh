@@ -74,6 +74,11 @@ for _ in {1..240}; do
   fi
   if rg -q 'dead-rose-live-root: live root mount validation completed successfully' "$log"; then root_seen=1; fi
   if rg -q 'Started .*Dead Rose OS Installer|Started dead-rose-installer\.service' "$log"; then installer_seen=1; fi
+  if rg -q 'Please configure the system|Please enter the new timezone' "$log"; then
+    echo "installer boot smoke: systemd-firstboot prompted during unattended live boot" >&2
+    tail -n 200 "$log" >&2
+    exit 1
+  fi
 
   if [[ "$emergency_seen" -eq 0 ]] && rg -q 'Press Enter for system maintenance' "$log"; then
     emergency_seen=1

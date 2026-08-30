@@ -114,6 +114,10 @@ rg -q 'systemctl status initrd-switch-root.service' "$project_dir/tests/boot/ins
 rg -q 'live root mount validation completed successfully' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must observe validated systemd-owned live-root mounts" >&2; exit 1; }
 rg -q 'search --no-floppy --label DEAD_ROSE_INSTALLER --set=root' "$grub_config" || { echo "GRUB must locate installer media by filesystem label" >&2; exit 1; }
 rg -q 'menuentry "Dead Rose OS Installer"' "$grub_config" || { echo "GRUB must provide the installer menu entry" >&2; exit 1; }
+[[ "$(rg -o 'systemd\.firstboot=no' "$grub_config" | wc -l | tr -d ' ')" == 2 ]] || { echo "every installer boot entry must suppress the interactive systemd first-boot wizard" >&2; exit 1; }
+rg -q '^Locale=C\.UTF-8$' "$project_dir/os/installer/mkosi.conf" || { echo "installer image must define a non-interactive default locale" >&2; exit 1; }
+rg -q '^Timezone=UTC$' "$project_dir/os/installer/mkosi.conf" || { echo "installer image must define a non-interactive default timezone" >&2; exit 1; }
+rg -q '^Hostname=dead-rose-installer$' "$project_dir/os/installer/mkosi.conf" || { echo "installer image must define a deterministic live hostname" >&2; exit 1; }
 rg -q 'configfile .*boot/grub/grub.cfg' "$grub_bootstrap" || { echo "embedded GRUB bootstrap must load the external menu" >&2; exit 1; }
 if rg -q 'set[[:space:]]+prefix=.*\$root' "$grub_bootstrap"; then
   echo "standalone GRUB must keep prefix on its memdisk so platform modules remain available" >&2
