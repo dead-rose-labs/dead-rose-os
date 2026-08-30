@@ -2,7 +2,7 @@
 set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 command -v rg >/dev/null || { echo "MISSING rg: install ripgrep (https://github.com/BurntSushi/ripgrep)" >&2; exit 1; }
-required=(VERSION DESIGN.md os/mkosi.conf os/mkosi.repart/10-esp.conf os/mkosi.repart/20-root-a.conf os/mkosi.repart/30-root-b.conf os/mkosi.repart/40-state.conf os/installer/grub-bootstrap.cfg os/installer/grub.cfg os/installer/mkosi.initrd.conf os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service 'os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\x2drose\x2diso.mount' os/installer/mkosi.initrd.extra/usr/lib/systemd/system/sysroot.mount os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.service.d/dead-rose-console.conf os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf os/systemd/dead-rose-core.service os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service apps/shell/src-tauri/tauri.conf.json apps/installer/src-tauri/tauri.conf.json tests/integration/installer-iso.sh tests/integration/live-root.sh tests/boot/installer-iso-smoke.sh)
+required=(VERSION DESIGN.md os/mkosi.conf os/mkosi.repart/10-esp.conf os/mkosi.repart/20-root-a.conf os/mkosi.repart/30-root-b.conf os/mkosi.repart/40-state.conf os/installer/grub-bootstrap.cfg os/installer/grub.cfg os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service 'os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\x2drose\x2diso.mount' os/installer/mkosi.initrd.extra/usr/lib/systemd/system/sysroot.mount os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.service.d/dead-rose-console.conf os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf os/systemd/dead-rose-core.service os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service apps/shell/src-tauri/tauri.conf.json apps/installer/src-tauri/tauri.conf.json tests/integration/installer-iso.sh tests/integration/live-root.sh tests/boot/installer-iso-smoke.sh)
 for path in "${required[@]}"; do [[ -f "$project_dir/$path" ]] || { echo "Missing $path" >&2; exit 1; }; done
 if rg -n "localStorage|sessionStorage|run_command|Command::new\(.*sh" "$project_dir/apps" "$project_dir/crates"; then echo "Forbidden runtime pattern found" >&2; exit 1; fi
 if rg -n '^Output=.*[/\\]' "$project_dir/os" --glob mkosi.conf; then echo "mkosi Output must be a filename without path components" >&2; exit 1; fi
@@ -87,7 +87,6 @@ grub_config="$project_dir/os/installer/grub.cfg"
 grub_bootstrap="$project_dir/os/installer/grub-bootstrap.cfg"
 live_root="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/dead-rose-initrd/mount-live-root"
 live_root_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/dead-rose-live-root.service"
-initrd_config="$project_dir/os/installer/mkosi.initrd.conf"
 media_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/run-dead\\x2drose\\x2diso.mount"
 root_mount_unit="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/sysroot.mount"
 switch_root_target_dropin="$project_dir/os/installer/mkosi.initrd.extra/usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf"
@@ -97,7 +96,11 @@ installer_unit="$project_dir/os/systemd/dead-rose-installer.service"
 [[ -x "$project_dir/tests/integration/installer-iso.sh" ]] || { echo "installer ISO check must be executable" >&2; exit 1; }
 [[ -x "$project_dir/tests/integration/live-root.sh" ]] || { echo "live-root integration check must be executable" >&2; exit 1; }
 [[ -x "$project_dir/tests/boot/installer-iso-smoke.sh" ]] || { echo "installer ISO smoke test must be executable" >&2; exit 1; }
-rg -q '^ExtraTrees=%D/mkosi\.initrd\.extra$' "$initrd_config" || { echo "default initrd extra tree must be anchored to mkosi's --directory path" >&2; exit 1; }
+rg -q 'build_initrd_overlay' "$iso_build" || { echo "ISO build must assemble the initrd extra tree as an explicit archive" >&2; exit 1; }
+rg -q 'cpio .*--format=newc.*--owner=\+0:\+0' "$iso_build" || { echo "initrd overlay must use a numerically root-owned newc archive" >&2; exit 1; }
+rg -q 'oflag=append conv=notrunc' "$iso_build" || { echo "initrd overlay must be appended to mkosi's composite initrd" >&2; exit 1; }
+rg -q 'installer initrd overlay is missing required path' "$iso_build" || { echo "ISO build must validate required initrd overlay contents" >&2; exit 1; }
+rg -q 'build-essential clang cpio curl' "$project_dir/scripts/bootstrap-builder.sh" || { echo "builder bootstrap must install cpio explicitly" >&2; exit 1; }
 rg -q 'if=pflash.*firmware_code' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must load OVMF CODE through pflash" >&2; exit 1; }
 rg -q 'if=pflash.*firmware_vars' "$project_dir/tests/boot/installer-iso-smoke.sh" || { echo "installer ISO smoke test must use a writable OVMF VARS image" >&2; exit 1; }
 if rg -q -- '-bios' "$project_dir/tests/boot/installer-iso-smoke.sh"; then echo "installer ISO smoke test must not load 4M OVMF through legacy -bios" >&2; exit 1; fi

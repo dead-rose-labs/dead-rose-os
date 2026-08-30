@@ -8,6 +8,9 @@ iso="$project_dir/build/dead-rose-os-${version}-amd64.iso"
 installer_root="$project_dir/build/installer-root"
 installer_kernel="$installer_root.vmlinuz"
 installer_initrd="$installer_root.initrd"
+initrd_extra_tree="$project_dir/os/installer/mkosi.initrd.extra"
+initrd_overlay="$project_dir/build/dead-rose-installer-overlay.initrd.zst"
+initrd_overlay_listing="$project_dir/build/logs/dead-rose-installer-overlay.list"
 iso_root="$project_dir/build/iso-root"
 iso_live="$iso_root/live"
 
@@ -26,6 +29,37 @@ require_privileged_regular_file() {
   local path="$1" label="$2"
   [[ -n "$path" ]] || fatal "$label variable is empty"
   sudo test -f "$path" || fatal "$label is not a present regular file: $path"
+}
+
+build_initrd_overlay() {
+  local required
+
+  [[ -d "$initrd_extra_tree" ]] || fatal "initrd extra tree is missing: $initrd_extra_tree"
+  command -v cpio >/dev/null || fatal "cpio is required to assemble the installer initrd overlay"
+
+  (
+    cd "$initrd_extra_tree"
+    find . -mindepth 1 -print0 \
+      | LC_ALL=C sort -z \
+      | cpio --null --create --format=newc --owner=+0:+0 --quiet
+  ) | zstd --quiet --force --threads=0 -19 -o "$initrd_overlay"
+
+  zstd --quiet --decompress --stdout "$initrd_overlay" \
+    | cpio --list --quiet \
+    | sed 's#^\./##' > "$initrd_overlay_listing"
+
+  for required in \
+    usr/lib/dead-rose-initrd/mount-live-root \
+    usr/lib/systemd/system/dead-rose-live-root.service \
+    'usr/lib/systemd/system/run-dead\x2drose\x2diso.mount' \
+    usr/lib/systemd/system/sysroot.mount \
+    usr/lib/systemd/system/initrd-root-fs.target.d/dead-rose-live-root.conf \
+    usr/lib/systemd/system/initrd-switch-root.target.d/dead-rose-live-root.conf; do
+    grep -Fxq "$required" "$initrd_overlay_listing" \
+      || fatal "installer initrd overlay is missing required path: /$required"
+  done
+
+  echo "Installer initrd overlay: $initrd_overlay"
 }
 
 # Ubuntu/Debian policy: /etc/shadow and /etc/gshadow must be regular files owned
@@ -128,10 +162,14 @@ require_privileged_regular_file "$installer_initrd" "initramfs"
 # mkosi appends separately compressed microcode and kernel-module archives to
 # the base initrd. Ubuntu's lsinitramfs cannot inspect more than one compressed
 # cpio archive and reports the valid composite image as "unsupported format".
-# The mandatory QEMU smoke test below validates the only useful contract here:
-# that the complete initrd mounts the live root and starts the installer.
+# The default-initrd ExtraTrees hook is not consistently applied by packaged
+# mkosi releases. Build our initrd-only files as an explicit final archive in
+# the composite initramfs instead. Linux unpacks concatenated compressed newc
+# archives in order, which is also how mkosi adds microcode and kernel modules.
+build_initrd_overlay
 sudo install -m0644 "$installer_kernel" "$iso_live/vmlinuz"
 sudo install -m0644 "$installer_initrd" "$iso_live/initrd"
+sudo dd if="$initrd_overlay" of="$iso_live/initrd" oflag=append conv=notrunc status=none
 
 efi_dir="$project_dir/build/efi/EFI/BOOT"
 efi_binary="$efi_dir/BOOTX64.EFI"
