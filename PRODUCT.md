@@ -30,8 +30,9 @@ UEFI amd64 hardware and QEMU; an Ubuntu Server 26.04 LTS build base; offline ins
 
 - Image-based A/B-ready GPT layout with EFI, ROOT-A, ROOT-B and persistent STATE partitions.
 - Rust-owned Argon2id authentication, rate limiting and in-memory sessions over local typed IPC.
-- Unprivileged `deadrose-ui` graphical account and small privileged installer boundary.
-- No conventional desktop, remote runtime assets, fake system data, generic command execution or automatic login.
+- PAM/logind-managed greetd sessions for the unprivileged `deadrose-ui` shell and `deadrose-installer` live UI.
+- A typed, group-restricted installer socket and narrow root Curtin adapter.
+- No conventional desktop, remote runtime assets, fake system data, generic command execution or interactive login inside the kiosk session.
 - Initial architecture is amd64/UEFI only; canonical builder is Ubuntu 26.04 amd64.
 
 ## Brand Commitments

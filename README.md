@@ -36,11 +36,13 @@ logs/
 
 The installed GPT layout is source-controlled under `os/mkosi.repart/`: `EFI` 512 MiB, `ROOT-A` 8 GiB, `ROOT-B` 8 GiB, and a `STATE` partition with an 8 GiB minimum that grows to fill the remaining disk. Mutable Dead Rose state lives on `STATE` at `/var/lib/dead-rose`; release roots remain replaceable.
 
-## Installation and recovery
+## Runtime, installation and recovery
 
-Boot the ISO, explicitly select a non-installer disk, configure the hostname and administrator, review the exact target, type `ERASE`, then install and restart. The installer verifies the embedded raw image before writing it.
+`greetd` creates the PAM/logind session on `tty1`; the small `dead-rose-session` supervisor runs Cage and exactly one allowlisted Tauri application as an unprivileged system account. The installed shell uses `deadrose-ui`; the live installer uses `deadrose-installer`. React never owns session or storage authority.
 
-The graphical shell owns `tty1`. Recovery remains intentionally available through the UEFI recovery entry or `systemd.unit=rescue.target`; a serial console can also be enabled by the operator. Recovery output is never part of a successful normal boot.
+Boot the ISO, explicitly select a non-installer disk by its stable `/dev/disk/by-id` identity, configure the hostname and administrator, review the exact target, type `ERASE`, then install and restart. The UI sends typed requests over a group-restricted Unix socket to `dead-rose-installer-agent`. That root service verifies the embedded image and delegates the destructive storage stages to Curtin. It never accepts arbitrary commands or paths from the UI.
+
+The graphical shell owns `tty1`. Recovery remains intentionally available through the GRUB recovery entry or `systemd.unit=rescue.target`; the installer menu also has verbose and debug entries. Recovery output is never part of a successful normal boot. See [build instructions](docs/build.md), [runtime architecture](docs/architecture/os-runtime.md), and the [debug runbook](docs/debug.md).
 
 ## Repository map
 
@@ -50,8 +52,10 @@ The graphical shell owns `tty1`. Recovery remains intentionally available throug
 - `crates/auth` — Argon2id credentials, rate limiting and sessions.
 - `crates/core` — authoritative local service.
 - `crates/ipc` — typed Unix socket transport.
-- `crates/installer-core` — disk validation, payload verification and image writing.
-- `os/` — mkosi, systemd-repart, Plymouth, Cage and installer image configuration.
+- `crates/session` — allowlisted Cage session supervisor and persistent-state initialization.
+- `crates/installer-core` — stable disk discovery and payload validation.
+- `crates/installer-agent` — narrow privileged Curtin adapter for installation.
+- `os/` — mkosi, systemd-repart, greetd, GRUB, Plymouth, Cage and installer image configuration.
 - `tests/` — security invariants, Rust tests and boot-smoke entrypoints.
 
-Read [DESIGN.md](DESIGN.md) before any frontend work and the full milestone specification in `docs/technical-tasks/` before architectural changes.
+Read [DESIGN.md](DESIGN.md) before any frontend work, the [rebuild audit](docs/architecture/rebuild-audit.md), and the full milestone specification in `docs/technical-tasks/` before architectural changes.
