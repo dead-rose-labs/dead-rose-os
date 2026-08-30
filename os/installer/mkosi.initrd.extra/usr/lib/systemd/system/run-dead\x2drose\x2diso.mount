@@ -1,0 +1,15 @@
+[Unit]
+Description=Mount Dead Rose installer media
+DefaultDependencies=no
+After=systemd-udev-trigger.service
+Wants=systemd-udev-trigger.service
+Before=initrd-fs.target initrd-root-fs.target
+OnFailure=emergency.target
+OnFailureJobMode=replace-irreversibly
+
+[Mount]
+What=/dev/disk/by-label/DEAD_ROSE_INSTALLER
+Where=/run/dead-rose-iso
+Type=iso9660
+Options=ro
+TimeoutSec=60s

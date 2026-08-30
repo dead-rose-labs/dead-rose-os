@@ -1,4 +1,0 @@
-# systemd must own both initrd mounts so they remain active through cleanup and
-# initrd-switch-root. The label is stable across optical, USB, and virtual media.
-LABEL=DEAD_ROSE_INSTALLER /run/dead-rose-iso iso9660 ro,x-initrd.mount,x-systemd.device-timeout=60s 0 0
-/run/dead-rose-iso/live/rootfs.squashfs /sysroot squashfs ro,loop,x-initrd.mount,x-systemd.requires-mounts-for=/run/dead-rose-iso 0 0
