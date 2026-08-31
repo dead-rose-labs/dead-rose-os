@@ -46,4 +46,9 @@ journalctl -b --no-pager -n 500 \
   -u dead-rose-session-ready.service \
   -u installer-session-ready.service \
   -u install-driver.service || true
+for identity in deadrose-ui deadrose-installer; do
+  if id "$identity" >/dev/null 2>&1; then
+    journalctl -b --no-pager -n 300 "_UID=$(id -u "$identity")" || true
+  fi
+done
 echo "DEAD_ROSE_SMOKE_DIAGNOSTICS_END"

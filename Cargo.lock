@@ -577,6 +577,9 @@ name = "dead-rose-session"
 version = "0.1.0"
 dependencies = [
  "nix",
+ "tracing",
+ "tracing-journald",
+ "tracing-subscriber",
 ]
 
 [[package]]

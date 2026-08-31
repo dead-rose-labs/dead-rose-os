@@ -1,12 +1,14 @@
 use std::{
     collections::VecDeque,
     env, fs,
+    io::{BufRead, BufReader, Read},
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
-    process::{Command, ExitStatus},
+    process::{Command, ExitStatus, Stdio},
     thread,
     time::{Duration, Instant},
 };
+use tracing::{error, info, warn};
 
 const ALLOWED_APPLICATIONS: [&str; 2] = [
     "/usr/lib/dead-rose/dead-rose-shell",
@@ -18,6 +20,8 @@ const RATE_LIMIT_DELAY: Duration = Duration::from_secs(30);
 const CRASH_LIMIT: usize = 5;
 
 fn main() {
+    init_logging();
+
     let application = env::args_os().nth(1).map(PathBuf::from).unwrap_or_else(|| {
         fail("usage: dead-rose-session APPLICATION");
     });
@@ -27,7 +31,7 @@ fn main() {
     loop {
         let started = Instant::now();
         let status = start_cage(&application).unwrap_or_else(|error| {
-            eprintln!("dead-rose-session: Cage failed to start: {error}");
+            error!(%error, "Cage failed to start");
             synthetic_failure()
         });
         let now = Instant::now();
@@ -42,14 +46,11 @@ fn main() {
             failures.pop_front();
         }
 
-        eprintln!(
-            "dead-rose-session: Cage session exited with {status}; recent_failures={}",
-            failures.len()
-        );
+        warn!(%status, recent_failures = failures.len(), "Cage session exited");
         let delay = if failures.len() >= CRASH_LIMIT {
-            eprintln!(
-                "dead-rose-session: crash rate limit reached; delaying restart for {} seconds",
-                RATE_LIMIT_DELAY.as_secs()
+            warn!(
+                delay_seconds = RATE_LIMIT_DELAY.as_secs(),
+                "Cage crash rate limit reached"
             );
             failures.clear();
             RATE_LIMIT_DELAY
@@ -57,6 +58,15 @@ fn main() {
             NORMAL_RESTART_DELAY
         };
         thread::sleep(delay);
+    }
+}
+
+fn init_logging() {
+    if let Ok(layer) = tracing_journald::layer() {
+        use tracing_subscriber::prelude::*;
+        let _ = tracing_subscriber::registry().with(layer).try_init();
+    } else {
+        let _ = tracing_subscriber::fmt().with_target(false).try_init();
     }
 }
 
@@ -85,10 +95,41 @@ fn start_cage(application: &Path) -> std::io::Result<ExitStatus> {
     let mut command = Command::new("/usr/bin/cage");
     command.args(["-s", "--"]).arg(application);
     command.env("WLR_LIBINPUT_NO_DEVICES", "1");
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
     if env::var_os("DEAD_ROSE_SOFTWARE_RENDERING").is_some() {
         command.env("LIBGL_ALWAYS_SOFTWARE", "1");
     }
-    command.status()
+    info!(application = %application.display(), "starting Cage session");
+    let mut child = command.spawn()?;
+    let stdout = child
+        .stdout
+        .take()
+        .map(|stream| thread::spawn(move || relay_output("cage stdout", stream, false)));
+    let stderr = child
+        .stderr
+        .take()
+        .map(|stream| thread::spawn(move || relay_output("cage stderr", stream, true)));
+    let status = child.wait()?;
+    if let Some(handle) = stdout {
+        let _ = handle.join();
+    }
+    if let Some(handle) = stderr {
+        let _ = handle.join();
+    }
+    Ok(status)
+}
+
+fn relay_output(label: &'static str, stream: impl Read, is_error: bool) {
+    for line in BufReader::new(stream).lines() {
+        match line {
+            Ok(line) if is_error => warn!(source = label, message = %line),
+            Ok(line) => info!(source = label, message = %line),
+            Err(error) => {
+                warn!(source = label, %error, "failed to read session output");
+                break;
+            }
+        }
+    }
 }
 
 #[cfg(unix)]
@@ -98,6 +139,6 @@ fn synthetic_failure() -> ExitStatus {
 }
 
 fn fail(message: &str) -> ! {
-    eprintln!("dead-rose-session: {message}");
+    error!(%message, "session supervisor failed");
     std::process::exit(1)
 }
