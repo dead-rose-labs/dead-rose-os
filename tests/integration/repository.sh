@@ -7,6 +7,7 @@ command -v rg >/dev/null || { echo "MISSING rg" >&2; exit 1; }
 required=(
   VERSION DESIGN.md os/mkosi.conf os/installer/mkosi.conf
   os/greetd/installed.toml os/greetd/installer.toml
+  os/pam/greetd
   os/systemd/greetd-installed.conf os/systemd/greetd-installer.conf
   os/systemd/dead-rose-core.service os/systemd/dead-rose-installer-backend.service
   os/systemd/dead-rose-state-init.service os/systemd/dead-rose-state.mount
@@ -48,6 +49,9 @@ rg -q '^user = "deadrose-ui"$' "$project_dir/os/greetd/installed.toml"
 rg -q 'dead-rose-session /usr/lib/dead-rose/dead-rose-shell' "$project_dir/os/greetd/installed.toml"
 rg -q '^user = "deadrose-installer"$' "$project_dir/os/greetd/installer.toml"
 rg -q 'dead-rose-session /usr/lib/dead-rose/dead-rose-installer' "$project_dir/os/greetd/installer.toml"
+rg -q '^@include login$' "$project_dir/os/pam/greetd"
+rg -q 'os/pam/greetd.*etc/pam\.d/greetd' "$project_dir/scripts/build-os.sh"
+rg -q 'os/pam/greetd.*etc/pam\.d/greetd' "$project_dir/scripts/build-iso.sh"
 if rg -q 'agreety|/bin/login' "$project_dir/os/greetd"; then
   echo "The kiosk VT must not fall through to an interactive login prompt" >&2
   exit 1

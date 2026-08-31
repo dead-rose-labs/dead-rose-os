@@ -23,6 +23,7 @@ install -Dm644 os/systemd/dead-rose-core.service "$staging/usr/lib/systemd/syste
 install -Dm644 os/systemd/dead-rose-state-init.service "$staging/usr/lib/systemd/system/dead-rose-state-init.service"
 install -Dm644 os/systemd/dead-rose-state.mount "$staging/usr/lib/systemd/system/var-lib-dead\x2drose.mount"
 install -Dm644 os/greetd/installed.toml "$staging/etc/greetd/config.toml"
+install -Dm644 os/pam/greetd "$staging/etc/pam.d/greetd"
 install -Dm644 os/systemd/greetd-installed.conf "$staging/etc/systemd/system/greetd.service.d/dead-rose.conf"
 install -Dm644 os/grub/99-dead-rose.cfg "$staging/etc/default/grub.d/99-dead-rose.cfg"
 install -Dm644 os/plymouth/dead-rose/dead-rose.plymouth "$staging/usr/share/plymouth/themes/dead-rose/dead-rose.plymouth"

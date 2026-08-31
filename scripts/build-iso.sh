@@ -112,6 +112,7 @@ require_regular_file "$project_dir/target/release/dead-rose-installer-agent" "in
 require_regular_file "$project_dir/target/release/dead-rose-session" "kiosk session supervisor"
 require_regular_file "$project_dir/os/systemd/dead-rose-installer-backend.service" "installer backend unit"
 require_regular_file "$project_dir/os/greetd/installer.toml" "installer greetd config"
+require_regular_file "$project_dir/os/pam/greetd" "greetd PAM policy"
 require_regular_file "$raw.zst" "compressed OS image"
 require_regular_file "$raw.sha256" "OS image checksum"
 sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_dir/build/logs/mkosi-installer.log"
@@ -133,6 +134,7 @@ done
 sudo install -Dm644 "$project_dir/os/systemd/dead-rose-installer-backend.service" "$installer_root/usr/lib/systemd/system/dead-rose-installer-backend.service"
 sudo install -Dm644 "$project_dir/os/systemd/greetd-installer.conf" "$installer_root/etc/systemd/system/greetd.service.d/dead-rose.conf"
 sudo install -Dm644 "$project_dir/os/greetd/installer.toml" "$installer_root/etc/greetd/config.toml"
+sudo install -Dm644 "$project_dir/os/pam/greetd" "$installer_root/etc/pam.d/greetd"
 sudo install -Dm644 "$project_dir/os/sysusers/dead-rose.conf" "$installer_root/usr/lib/sysusers.d/dead-rose.conf"
 sudo install -Dm644 "$project_dir/os/tmpfiles/dead-rose.conf" "$installer_root/usr/lib/tmpfiles.d/dead-rose.conf"
 # These definitions are injected after mkosi has assembled the directory
