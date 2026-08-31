@@ -26,6 +26,6 @@ accel="tcg"; [[ -e /dev/kvm ]] && accel="kvm"
 exec qemu-system-x86_64 -machine "q35,accel=$accel" -cpu max -m 4096 -smp 4 \
   -drive "if=pflash,format=raw,unit=0,readonly=on,file=$firmware" \
   -drive "if=pflash,format=raw,unit=1,file=$vars" \
-  -cdrom "$iso" -drive "if=none,id=target,format=qcow2,file=$target" \
+  -cdrom "$iso" -drive "if=none,id=target,format=qcow2,file=$target,discard=unmap,detect-zeroes=unmap" \
   -device "virtio-blk-pci,drive=target,serial=deadrose-target" \
   -boot d -display gtk

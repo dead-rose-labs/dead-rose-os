@@ -46,12 +46,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# The production image intentionally reserves fixed A/B/STATE partitions and
+# therefore contains large zero-filled regions. Preserve their logical bytes
+# while letting the fresh qcow2 smoke target represent zero writes sparsely;
+# otherwise software-emulated QEMU spends most of the job materializing holes.
 qemu-system-x86_64 \
   -machine "q35,accel=$qemu_accel" -cpu "$qemu_cpu" -m 3072 -smp 2 \
   -drive "if=pflash,format=raw,unit=0,readonly=on,file=$firmware_code" \
   -drive "if=pflash,format=raw,unit=1,file=$firmware_vars" \
   -cdrom "$iso" -boot order=d,menu=off \
-  -drive "if=none,id=target,format=qcow2,file=$target" \
+  -drive "if=none,id=target,format=qcow2,file=$target,discard=unmap,detect-zeroes=unmap" \
   -device virtio-blk-pci,drive=target,serial=deadrose-smoke \
   -device virtio-vga -display none -serial stdio -no-reboot -no-shutdown >"$installer_log" 2>&1 &
 qemu_pid="$!"
@@ -94,7 +98,7 @@ qemu-system-x86_64 \
   -machine "q35,accel=$qemu_accel" -cpu "$qemu_cpu" -m 2048 -smp 2 \
   -drive "if=pflash,format=raw,unit=0,readonly=on,file=$firmware_code" \
   -drive "if=pflash,format=raw,unit=1,file=$firmware_vars" \
-  -drive "if=none,id=target,format=qcow2,file=$target" \
+  -drive "if=none,id=target,format=qcow2,file=$target,discard=unmap,detect-zeroes=unmap" \
   -device virtio-blk-pci,drive=target,serial=deadrose-smoke -boot order=c,menu=off \
   -device virtio-vga -display none -serial stdio -no-reboot -no-shutdown >"$installed_log" 2>&1 &
 qemu_pid="$!"

@@ -106,5 +106,6 @@ rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-
 rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_SHELL_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
+[[ "$(rg -o 'discard=unmap,detect-zeroes=unmap' "$project_dir/tests/boot/installer-iso-smoke.sh" | wc -l | tr -d ' ')" == 2 ]]
 
 echo "Repository runtime invariants pass."
