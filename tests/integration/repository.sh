@@ -78,6 +78,7 @@ if rg -q '^m deadrose-(ui|installer) (video|render|input)$' "$project_dir/os/sys
 fi
 rg -q '^User=root$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Group=deadrose-installer-ipc$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
+rg -q '^Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.raw.zst$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 
 rg -q 'InstallerRequest::Install' "$project_dir/apps/installer/src-tauri/src/main.rs"
 rg -q 'UnixStream::connect' "$project_dir/apps/installer/src-tauri/src/main.rs"

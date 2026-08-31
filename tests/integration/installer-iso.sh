@@ -53,6 +53,7 @@ grep -Fq "'dd-zst': '| zstd --decompress --stdout'" "$installer_root/usr/lib/pyt
 [[ -f "$installer_root/etc/pam.d/greetd" ]] || fail "greetd PAM policy is missing from installer root"
 [[ -f "$installer_root/etc/pam.d/login" ]] || fail "system login PAM policy is missing from installer root"
 [[ -f "$installer_root/usr/lib/systemd/system/dead-rose-installer-backend.service" ]] || fail "installer backend unit is missing from installer root"
+grep -Fq 'Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.raw.zst' "$installer_root/usr/lib/systemd/system/dead-rose-installer-backend.service" || fail "installer backend payload path does not name the compressed image"
 installer_uid="$(awk -F: '$1 == "deadrose-installer" { print $3 }' "$installer_root/etc/passwd")"
 [[ -n "$installer_uid" ]] || fail "deadrose-installer uid is missing"
 [[ "$(awk -F: '$1 == "deadrose-installer" { print $6 }' "$installer_root/etc/passwd")" == "/var/lib/dead-rose-installer" ]] || fail "deadrose-installer home is invalid"
