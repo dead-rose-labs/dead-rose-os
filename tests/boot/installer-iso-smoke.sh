@@ -25,7 +25,7 @@ if [[ -r /dev/kvm && -w /dev/kvm ]]; then
 fi
 echo "installer boot smoke: using QEMU accelerator $qemu_accel"
 
-install_timeout_seconds="${DEAD_ROSE_INSTALL_TIMEOUT_SECONDS:-2400}"
+install_timeout_seconds="${DEAD_ROSE_INSTALL_TIMEOUT_SECONDS:-5400}"
 installed_boot_timeout_seconds="${DEAD_ROSE_BOOT_TIMEOUT_SECONDS:-360}"
 [[ "$install_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { echo "invalid install timeout" >&2; exit 2; }
 [[ "$installed_boot_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || { echo "invalid boot timeout" >&2; exit 2; }

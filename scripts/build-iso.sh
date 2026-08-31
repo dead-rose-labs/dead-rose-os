@@ -178,6 +178,7 @@ if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then
   sudo install -Dm755 "$project_dir/tests/boot/assets/session-ready" "$installer_root/usr/lib/dead-rose-tests/session-ready"
   sudo install -Dm755 "$project_dir/tests/boot/assets/install-driver.py" "$installer_root/usr/lib/dead-rose-tests/install-driver.py"
   sudo install -Dm755 "$project_dir/tests/boot/assets/smoke-diagnostics" "$installer_root/usr/lib/dead-rose-tests/smoke-diagnostics"
+  sudo install -Dm644 "$project_dir/tests/boot/assets/backend-console.conf" "$installer_root/etc/systemd/system/dead-rose-installer-backend.service.d/test-console.conf"
   sudo install -Dm644 "$project_dir/tests/boot/assets/installer-session-ready.service" "$installer_root/usr/lib/systemd/system/installer-session-ready.service"
   sudo install -Dm644 "$project_dir/tests/boot/assets/install-driver.service" "$installer_root/usr/lib/systemd/system/install-driver.service"
   sudo install -Dm644 "$project_dir/tests/boot/assets/smoke-diagnostics.service" "$installer_root/usr/lib/systemd/system/dead-rose-smoke-diagnostics.service"
