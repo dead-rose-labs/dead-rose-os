@@ -48,3 +48,4 @@ sudo mkosi --directory os --output-directory "$output_directory" --output "$outp
 sudo chown -- "$(id -u):$(id -g)" "$output"
 sha256sum "$output" > "$output.sha256"
 zstd -T0 -19 --force "$output" -o "$output.zst"
+sha256sum "$output.zst" > "$output.zst.sha256"

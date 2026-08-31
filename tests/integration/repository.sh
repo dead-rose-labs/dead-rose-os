@@ -42,6 +42,8 @@ if rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"; then
 fi
 rg -q '^curtin_commit="[0-9a-f]{40}"$' "$project_dir/scripts/stage-curtin.sh"
 rg -q '^curtin_sha256="[0-9a-f]{64}"$' "$project_dir/scripts/stage-curtin.sh"
+rg -q 'patches/curtin/dd-zstd.patch' "$project_dir/scripts/stage-curtin.sh"
+rg -q "'dd-zst': '| zstd --decompress --stdout'" "$project_dir/patches/curtin/dd-zstd.patch"
 if rg -q 'gnome-shell|gdm3|ubuntu-desktop|plasma-desktop|xfce4' "$project_dir/os" --glob 'mkosi.conf'; then
   echo "A conventional desktop package is forbidden" >&2
   exit 1

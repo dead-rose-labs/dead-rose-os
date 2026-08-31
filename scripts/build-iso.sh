@@ -114,7 +114,7 @@ require_regular_file "$project_dir/os/systemd/dead-rose-installer-backend.servic
 require_regular_file "$project_dir/os/greetd/installer.toml" "installer greetd config"
 require_regular_file "$project_dir/os/pam/greetd" "greetd PAM policy"
 require_regular_file "$raw.zst" "compressed OS image"
-require_regular_file "$raw.sha256" "OS image checksum"
+require_regular_file "$raw.zst.sha256" "compressed OS image checksum"
 sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_dir/build/logs/mkosi-installer.log"
 
 # Stage the installer payload without re-owning the tree: mksquashfs must
@@ -164,15 +164,12 @@ sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.script" "$inst
 sudo install -Dm644 "$project_dir/assets/brand/dead-rose-os-logo.png" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose-os-logo.png"
 "$project_dir/scripts/stage-curtin.sh" "$installer_root"
 sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc/systemd/system/graphical.target.wants" "$installer_root/etc/systemd/system/multi-user.target.wants" "$installer_root/usr/share/plymouth/themes"
-# Preserve zero-filled regions as holes. Piping through tee materializes the
-# nominal 25 GiB disk image and can exhaust the CI runner even though the raw
-# image is sparse.
-embedded_raw="$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw"
-sudo zstd --decompress --force --sparse "$raw.zst" -o "$embedded_raw"
-# zstd copies ownership metadata from its runner-owned input. Restore image
-# ownership explicitly without recursively changing the mkosi root.
-sudo chown 0:0 "$embedded_raw"
-sudo cp "$raw.sha256" "$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.sha256"
+# Keep the payload compressed in the live image. The backend verifies the
+# compact artifact and Curtin streams its decompressed bytes directly to the
+# target instead of reading a nominal 25 GiB sparse file twice under QEMU.
+embedded_payload="$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.zst"
+sudo install -m0644 "$raw.zst" "$embedded_payload"
+sudo install -m0644 "$raw.zst.sha256" "$embedded_payload.sha256"
 sudo ln -sf /usr/lib/systemd/system/greetd.service "$installer_root/etc/systemd/system/graphical.target.wants/greetd.service"
 sudo ln -sf /usr/lib/systemd/system/dead-rose-installer-backend.service "$installer_root/etc/systemd/system/multi-user.target.wants/dead-rose-installer-backend.service"
 sudo ln -sf /usr/lib/systemd/system/graphical.target "$installer_root/etc/systemd/system/default.target"

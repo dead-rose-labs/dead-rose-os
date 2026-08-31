@@ -199,9 +199,9 @@ async fn install(
 
     let payload = PathBuf::from(
         env::var("DEAD_ROSE_PAYLOAD")
-            .unwrap_or_else(|_| "/usr/lib/dead-rose-installer/dead-rose-os.raw".into()),
+            .unwrap_or_else(|_| "/usr/lib/dead-rose-installer/dead-rose-os.raw.zst".into()),
     );
-    let digest_path = payload.with_extension("raw.sha256");
+    let digest_path = checksum_path(&payload);
     progress(
         write,
         "payload_verification",
@@ -300,8 +300,14 @@ fn curtin_config(disk: &InstallDisk, payload: &Path) -> io::Result<String> {
     let payload_uri = format!("file://{}", payload.display());
     let payload_yaml = serde_json::to_string(&payload_uri)?;
     Ok(format!(
-        "stages:\n  - early\n  - partitioning\nblock-meta:\n  devices:\n    - {disk_yaml}\nsources:\n  dead_rose_image:\n    type: dd-raw\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
+        "stages:\n  - early\n  - partitioning\nblock-meta:\n  devices:\n    - {disk_yaml}\nsources:\n  dead_rose_image:\n    type: dd-zst\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
     ))
+}
+
+fn checksum_path(payload: &Path) -> PathBuf {
+    let mut path = payload.as_os_str().to_os_string();
+    path.push(".sha256");
+    path.into()
 }
 
 fn validate_stable_id(disk: &InstallDisk) -> Result<(), (&'static str, String)> {
@@ -494,7 +500,9 @@ fn restart_system() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{curtin_config, has_stable_id_shape, is_valid_hostname, is_valid_username};
+    use super::{
+        checksum_path, curtin_config, has_stable_id_shape, is_valid_hostname, is_valid_username,
+    };
     use dead_rose_system_types::InstallDisk;
     use std::path::Path;
 
@@ -537,9 +545,17 @@ mod tests {
             size_bytes: 40 * 1024 * 1024 * 1024,
             removable: false,
         };
-        let config = curtin_config(&disk, Path::new("/payload/dead-rose.raw")).unwrap();
-        assert!(config.contains("type: dd-raw"));
-        assert!(config.contains("uri: \"file:///payload/dead-rose.raw\""));
+        let config = curtin_config(&disk, Path::new("/payload/dead-rose.raw.zst")).unwrap();
+        assert!(config.contains("type: dd-zst"));
+        assert!(config.contains("uri: \"file:///payload/dead-rose.raw.zst\""));
         assert!(config.contains("\"/dev/disk/by-id/virtio-test\""));
+    }
+
+    #[test]
+    fn keeps_the_payload_suffix_in_the_checksum_path() {
+        assert_eq!(
+            checksum_path(Path::new("/payload/dead-rose.raw.zst")),
+            Path::new("/payload/dead-rose.raw.zst.sha256")
+        );
     }
 }

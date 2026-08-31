@@ -1,0 +1,26 @@
+diff --git a/curtin/commands/block_meta.py b/curtin/commands/block_meta.py
+index 286f64f..e07ace6 100644
+--- a/curtin/commands/block_meta.py
++++ b/curtin/commands/block_meta.py
+@@ -154,6 +154,7 @@ def write_image_to_disk(source, dev):
+         'dd-bz2': '| bzcat',
+         'dd-gz': '| zcat',
+         'dd-xz': '| xzcat',
++        'dd-zst': '| zstd --decompress --stdout',
+         'dd-raw': ''
+     }
+     uri = source['uri']
+diff --git a/curtin/util.py b/curtin/util.py
+index e1838de..3062f40 100644
+--- a/curtin/util.py
++++ b/curtin/util.py
+@@ -1094,7 +1094,7 @@ def sanitize_source(source):
+     if type(source) is dict:
+         # already sanitized?
+         return source
+     supported = ['tgz', 'dd-tgz', 'tbz', 'dd-tbz', 'txz', 'dd-txz', 'dd-tar',
+-                 'dd-bz2', 'dd-gz', 'dd-xz', 'dd-raw', 'fsimage',
++                 'dd-bz2', 'dd-gz', 'dd-xz', 'dd-zst', 'dd-raw', 'fsimage',
+                  'fsimage-layered']
+     deftype = 'tgz'
+     for i in supported:
