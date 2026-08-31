@@ -60,6 +60,12 @@ if rg -q 'agreety|/bin/login' "$project_dir/os/greetd"; then
 fi
 rg -q '^u deadrose-ui .*nologin$' "$project_dir/os/sysusers/dead-rose.conf"
 rg -q '^u deadrose-installer .*nologin$' "$project_dir/os/sysusers/dead-rose.conf"
+rg -q '^u deadrose-ui .* /var/lib/dead-rose-ui /usr/sbin/nologin$' "$project_dir/os/sysusers/dead-rose.conf"
+rg -q '^u deadrose-installer .* /var/lib/dead-rose-installer /usr/sbin/nologin$' "$project_dir/os/sysusers/dead-rose.conf"
+rg -q '^d /var/lib/dead-rose 0750 deadrose-core deadrose-core -$' "$project_dir/os/tmpfiles/dead-rose.conf"
+rg -q '^d /var/lib/dead-rose-ui 0750 deadrose-ui deadrose-ui -$' "$project_dir/os/tmpfiles/dead-rose.conf"
+rg -q '^d /var/lib/dead-rose-installer 0750 deadrose-installer deadrose-installer -$' "$project_dir/os/tmpfiles/dead-rose.conf"
+rg -q -- '--prefix=/var/lib/dead-rose-installer' "$project_dir/scripts/build-iso.sh"
 if rg -q '^m deadrose-(ui|installer) (video|render|input)$' "$project_dir/os/sysusers/dead-rose.conf"; then
   echo "greetd/logind sessions must not require permanent device-group membership" >&2
   exit 1

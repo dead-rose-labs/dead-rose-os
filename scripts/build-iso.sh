@@ -144,6 +144,8 @@ sudo systemd-tmpfiles \
   --root="$installer_root" \
   --create \
   --prefix=/var/lib/dead-rose \
+  --prefix=/var/lib/dead-rose-ui \
+  --prefix=/var/lib/dead-rose-installer \
   --prefix=/run/dead-rose \
   --prefix=/run/dead-rose-installer
 for identity in deadrose-core deadrose-ui deadrose-installer; do
@@ -154,8 +156,8 @@ for group in deadrose-ipc deadrose-installer-ipc; do
   sudo awk -F: -v name="$group" '$1 == name { found = 1 } END { exit !found }' "$installer_root/etc/group" \
     || fatal "installer root is missing system group: $group"
 done
-sudo test -d "$installer_root/var/lib/dead-rose/installer" \
-  || fatal "installer state directory was not materialized"
+sudo test -d "$installer_root/var/lib/dead-rose-installer" \
+  || fatal "installer home directory was not materialized"
 sudo install -Dm644 "$project_dir/os/mkosi.extra/etc/os-release" "$installer_root/usr/lib/os-release"
 sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.plymouth" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose.plymouth"
 sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.script" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose.script"
