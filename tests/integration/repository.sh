@@ -58,6 +58,10 @@ if rg -q 'agreety|/bin/login' "$project_dir/os/greetd"; then
   echo "The kiosk VT must not fall through to an interactive login prompt" >&2
   exit 1
 fi
+if rg -q '"fullscreen"[[:space:]]*:[[:space:]]*true' "$project_dir/apps/installer/src-tauri/tauri.conf.json" "$project_dir/apps/shell/src-tauri/tauri.conf.json"; then
+  echo "Cage owns kiosk fullscreen; clients must not request fullscreen before their xdg surface is mapped" >&2
+  exit 1
+fi
 rg -q '^u deadrose-ui .*nologin$' "$project_dir/os/sysusers/dead-rose.conf"
 rg -q '^u deadrose-installer .*nologin$' "$project_dir/os/sysusers/dead-rose.conf"
 rg -q '^u deadrose-ui .* /var/lib/dead-rose-ui /usr/sbin/nologin$' "$project_dir/os/sysusers/dead-rose.conf"
