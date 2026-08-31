@@ -180,8 +180,10 @@ if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then
   sudo install -Dm644 "$project_dir/tests/boot/assets/installer-session-ready.service" "$installer_root/usr/lib/systemd/system/installer-session-ready.service"
   sudo install -Dm644 "$project_dir/tests/boot/assets/install-driver.service" "$installer_root/usr/lib/systemd/system/install-driver.service"
   sudo install -Dm644 "$project_dir/tests/boot/assets/smoke-diagnostics.service" "$installer_root/usr/lib/systemd/system/dead-rose-smoke-diagnostics.service"
+  sudo install -Dm644 "$project_dir/tests/boot/assets/smoke-watchdog.service" "$installer_root/usr/lib/systemd/system/dead-rose-smoke-watchdog.service"
   sudo ln -sf /usr/lib/systemd/system/installer-session-ready.service "$installer_root/etc/systemd/system/graphical.target.wants/installer-session-ready.service"
   sudo ln -sf /usr/lib/systemd/system/install-driver.service "$installer_root/etc/systemd/system/graphical.target.wants/install-driver.service"
+  sudo ln -sf /usr/lib/systemd/system/dead-rose-smoke-watchdog.service "$installer_root/etc/systemd/system/multi-user.target.wants/dead-rose-smoke-watchdog.service"
 fi
 
 # systemd moves the initrd API filesystems into these directories during

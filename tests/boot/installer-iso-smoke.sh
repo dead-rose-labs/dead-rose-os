@@ -60,7 +60,8 @@ install_deadline=$((SECONDS + install_timeout_seconds))
 last_progress=""
 while (( SECONDS < install_deadline )); do
   if rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$installer_log"; then break; fi
-  if rg -q 'DEAD_ROSE_SMOKE_DIAGNOSTICS_END' "$installer_log"; then
+  if rg -q 'DEAD_ROSE_SMOKE_DIAGNOSTICS_END' "$installer_log" \
+    && ! rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$installer_log"; then
     echo "installer boot smoke: live session diagnostics reported failure" >&2
     tail -n 300 "$installer_log" >&2
     exit 1
