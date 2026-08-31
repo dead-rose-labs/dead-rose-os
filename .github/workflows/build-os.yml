@@ -69,13 +69,15 @@ jobs:
           last_phase="${last_phase:-none}"
           failed_units="$(rg -o 'DEAD_ROSE_FAILED_UNIT [a-zA-Z0-9@_.-]+' "$installer_log" 2>/dev/null | cut -d' ' -f2 | sort -u | paste -sd, - || true)"
           failed_units="${failed_units:-none}"
+          unit_states="$(rg -o 'DEAD_ROSE_UNIT_STATE [a-zA-Z0-9@_.-]+ (active|activating|deactivating|inactive|failed|unknown)' "$installer_log" 2>/dev/null | sed 's/^DEAD_ROSE_UNIT_STATE //' | sort -u | paste -sd, - || true)"
+          unit_states="${unit_states:-none}"
           grub_ready="$(marker_state DEAD_ROSE_GRUB_READY "$installer_log")"
           initrd_ready="$(marker_state DEAD_ROSE_INITRD_READY "$installer_log")"
           live_root_ready="$(marker_state DEAD_ROSE_LIVE_ROOT_READY "$installer_log")"
           ui_ready="$(marker_state DEAD_ROSE_INSTALLER_UI_READY "$installer_log")"
           install_complete="$(marker_state DEAD_ROSE_INSTALL_COMPLETE "$installer_log")"
           shell_ready="$(marker_state DEAD_ROSE_SHELL_READY "$installed_log")"
-          summary="GRUB: $grub_ready; initrd: $initrd_ready; live root: $live_root_ready; UI: $ui_ready; install complete: $install_complete; installed shell: $shell_ready; last phase: $last_phase; failed units: $failed_units"
+          summary="GRUB: $grub_ready; initrd: $initrd_ready; live root: $live_root_ready; UI: $ui_ready; install complete: $install_complete; installed shell: $shell_ready; last phase: $last_phase; failed units: $failed_units; unit states: $unit_states"
           echo "::notice title=Dead Rose installer smoke::$summary"
           {
             echo "## Installer smoke"
@@ -88,6 +90,7 @@ jobs:
             echo "- Installed shell ready: $shell_ready"
             echo "- Last install phase: $last_phase"
             echo "- Failed units: $failed_units"
+            echo "- Unit states: $unit_states"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Rebuild release artifacts without smoke instrumentation

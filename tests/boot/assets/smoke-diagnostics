@@ -7,6 +7,12 @@ for unit in \
   dead-rose-installer-backend.service \
   installer-session-ready.service \
   install-driver.service; do
+  state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  case "$state" in
+    active|activating|deactivating|inactive|failed) ;;
+    *) state=unknown ;;
+  esac
+  echo "DEAD_ROSE_UNIT_STATE $unit $state"
   if systemctl is-failed --quiet "$unit"; then
     echo "DEAD_ROSE_FAILED_UNIT $unit"
   fi
