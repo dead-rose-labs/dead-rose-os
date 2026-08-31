@@ -4,6 +4,9 @@ set -u
 echo "DEAD_ROSE_SMOKE_DIAGNOSTICS_BEGIN"
 for unit in \
   greetd.service \
+  plymouth-quit.service \
+  plymouth-quit-wait.service \
+  systemd-user-sessions.service \
   dead-rose-installer-backend.service \
   installer-session-ready.service \
   install-driver.service; do
