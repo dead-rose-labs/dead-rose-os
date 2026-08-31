@@ -17,6 +17,22 @@ for unit in \
     echo "DEAD_ROSE_FAILED_UNIT $unit"
   fi
 done
+for specification in \
+  session:/usr/lib/dead-rose/dead-rose-session \
+  cage:/usr/bin/cage \
+  installer:/usr/lib/dead-rose/dead-rose-installer \
+  backend:/usr/lib/dead-rose/dead-rose-installer-agent; do
+  label="${specification%%:*}"
+  executable="${specification#*:}"
+  present=no
+  for process in /proc/[0-9]*; do
+    if [[ "$(readlink -f "$process/exe" 2>/dev/null || true)" == "$executable" ]]; then
+      present=yes
+      break
+    fi
+  done
+  echo "DEAD_ROSE_PROCESS_STATE $label $present"
+done
 systemctl --failed --no-pager || true
 loginctl list-sessions --no-pager || true
 ps -eo user,pid,ppid,args | grep -E 'greetd|cage|dead-rose' || true

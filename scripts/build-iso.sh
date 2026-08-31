@@ -123,6 +123,13 @@ sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_di
 sudo install -Dm755 "$project_dir/target/release/dead-rose-installer" "$installer_root/usr/lib/dead-rose/dead-rose-installer"
 sudo install -Dm755 "$project_dir/target/release/dead-rose-installer-agent" "$installer_root/usr/lib/dead-rose/dead-rose-installer-agent"
 sudo install -Dm755 "$project_dir/target/release/dead-rose-session" "$installer_root/usr/lib/dead-rose/dead-rose-session"
+for binary in dead-rose-installer dead-rose-installer-agent dead-rose-session; do
+  sudo chroot "$installer_root" /usr/bin/ldd "/usr/lib/dead-rose/$binary" \
+    | tee "$project_dir/build/logs/ldd-$binary.log"
+  if grep -q 'not found' "$project_dir/build/logs/ldd-$binary.log"; then
+    fatal "$binary has unresolved runtime libraries in the installer root"
+  fi
+done
 sudo install -Dm644 "$project_dir/os/systemd/dead-rose-installer-backend.service" "$installer_root/usr/lib/systemd/system/dead-rose-installer-backend.service"
 sudo install -Dm644 "$project_dir/os/systemd/greetd-installer.conf" "$installer_root/etc/systemd/system/greetd.service.d/dead-rose.conf"
 sudo install -Dm644 "$project_dir/os/greetd/installer.toml" "$installer_root/etc/greetd/config.toml"
