@@ -34,6 +34,8 @@ fi
 rg -q '^Bootloader=grub$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+greetd$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+greetd$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+login$' "$project_dir/os/mkosi.conf"
+rg -q '^[[:space:]]+login$' "$project_dir/os/installer/mkosi.conf"
 if rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"; then
   echo "Ubuntu 26.04 does not ship a curtin binary package; use the pinned source runtime" >&2
   exit 1
