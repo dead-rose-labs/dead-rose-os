@@ -10,11 +10,12 @@ index 286f64f..e07ace6 100644
          'dd-raw': ''
      }
      uri = source['uri']
-@@ -168,5 +169,5 @@ def write_image_to_disk(source, dev):
+@@ -168,5 +169,6 @@ def write_image_to_disk(source, dev):
      util.subp(args=[
          'sh', '-c',
 -        fetch + extractor[source['type']] + ' | dd bs=4M of="$2"',
-+        fetch + extractor[source['type']] + ' | dd bs=4M status=progress of="$2"',
++        'sparse=; test ! -e /usr/lib/dead-rose-tests/sparse-target || sparse=conv=sparse; ' +
++        fetch + extractor[source['type']] + ' | dd bs=4M $sparse status=progress of="$2"',
          '--', uri, devnode])
      util.subp(['partprobe', devnode])
 diff --git a/curtin/util.py b/curtin/util.py

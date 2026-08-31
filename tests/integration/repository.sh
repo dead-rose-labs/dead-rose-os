@@ -44,7 +44,8 @@ rg -q '^curtin_commit="[0-9a-f]{40}"$' "$project_dir/scripts/stage-curtin.sh"
 rg -q '^curtin_sha256="[0-9a-f]{64}"$' "$project_dir/scripts/stage-curtin.sh"
 rg -q 'patches/curtin/dd-zstd.patch' "$project_dir/scripts/stage-curtin.sh"
 rg -q "'dd-zst': '| zstd --decompress --stdout'" "$project_dir/patches/curtin/dd-zstd.patch"
-rg -q 'dd bs=4M status=progress' "$project_dir/patches/curtin/dd-zstd.patch"
+rg -q 'dead-rose-tests/sparse-target' "$project_dir/patches/curtin/dd-zstd.patch"
+rg -q 'conv=sparse' "$project_dir/patches/curtin/dd-zstd.patch"
 if rg -q 'gnome-shell|gdm3|ubuntu-desktop|plasma-desktop|xfce4' "$project_dir/os" --glob 'mkosi.conf'; then
   echo "A conventional desktop package is forbidden" >&2
   exit 1
@@ -104,6 +105,7 @@ rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/
 rg -q 'test -f' "$project_dir/scripts/build-iso.sh"
 rg -q 'stage-curtin.sh' "$project_dir/scripts/build-iso.sh"
 rg -q 'backend-console.conf.*dead-rose-installer-backend.service.d/test-console.conf' "$project_dir/scripts/build-iso.sh"
+rg -q 'sparse-target.*usr/lib/dead-rose-tests/sparse-target' "$project_dir/scripts/build-iso.sh"
 rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"
 rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$project_dir/tests/boot/installer-iso-smoke.sh"

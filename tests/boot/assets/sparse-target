@@ -1,0 +1,1 @@
+This marker is present only when the installer smoke test uses a fresh zeroed QCOW2 target.
