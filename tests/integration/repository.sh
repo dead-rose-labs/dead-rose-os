@@ -36,6 +36,9 @@ rg -q '^[[:space:]]+greetd$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+greetd$' "$project_dir/os/installer/mkosi.conf"
 rg -q '^[[:space:]]+login$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+login$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+systemd-resolved$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+sudo$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+lshw$' "$project_dir/os/installer/mkosi.conf"
 if rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"; then
   echo "Ubuntu 26.04 does not ship a curtin binary package; use the pinned source runtime" >&2
   exit 1
@@ -83,6 +86,7 @@ fi
 rg -q '^User=root$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Group=deadrose-installer-ipc$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^RestrictSUIDSGID=no$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
+rg -q '^Wants=.*systemd-resolved\.service$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.rootfs.tar.gz$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Environment=DEAD_ROSE_TARGET_MOUNT=/run/dead-rose-installer/target$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 
@@ -117,6 +121,7 @@ rg -q 'backend-console.conf.*dead-rose-installer-backend.service.d/test-console.
 rg -q 'rootfs\.tar\.gz' "$project_dir/scripts/build-os.sh"
 rg -q -- '--create --gzip' "$project_dir/scripts/build-os.sh"
 rg -q 'dead-rose-os.rootfs.tar.gz' "$project_dir/scripts/build-iso.sh"
+rg -q 'stub-resolv\.conf.*installer_root/etc/resolv\.conf' "$project_dir/scripts/build-iso.sh"
 rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"
 rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$project_dir/tests/boot/installer-iso-smoke.sh"

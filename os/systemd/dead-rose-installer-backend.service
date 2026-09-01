@@ -1,7 +1,7 @@
 [Unit]
 Description=Dead Rose privileged installer backend
-After=local-fs.target systemd-udev-settle.service
-Wants=systemd-udev-settle.service
+After=local-fs.target systemd-udev-settle.service systemd-resolved.service
+Wants=systemd-udev-settle.service systemd-resolved.service
 Before=greetd.service
 
 [Service]

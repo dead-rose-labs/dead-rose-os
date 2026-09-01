@@ -139,6 +139,9 @@ sudo install -Dm644 "$project_dir/os/greetd/installer.toml" "$installer_root/etc
 sudo install -Dm644 "$project_dir/os/pam/greetd" "$installer_root/etc/pam.d/greetd"
 sudo install -Dm644 "$project_dir/os/sysusers/dead-rose.conf" "$installer_root/usr/lib/sysusers.d/dead-rose.conf"
 sudo install -Dm644 "$project_dir/os/tmpfiles/dead-rose.conf" "$installer_root/usr/lib/tmpfiles.d/dead-rose.conf"
+# Curtin enters the extracted target for standard Ubuntu curthooks and expects
+# the live environment to provide resolver configuration during that chroot.
+sudo ln -sfn /run/systemd/resolve/stub-resolv.conf "$installer_root/etc/resolv.conf"
 # These definitions are injected after mkosi has assembled the directory
 # image, so materialize them explicitly before the live root is packed.
 sudo systemd-sysusers --root="$installer_root"
