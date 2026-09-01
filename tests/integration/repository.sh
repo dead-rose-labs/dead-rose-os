@@ -37,8 +37,15 @@ rg -q '^[[:space:]]+greetd$' "$project_dir/os/installer/mkosi.conf"
 rg -q '^[[:space:]]+login$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+login$' "$project_dir/os/installer/mkosi.conf"
 rg -q '^[[:space:]]+systemd-resolved$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+apt$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+iproute2$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+lsb-release$' "$project_dir/os/installer/mkosi.conf"
 rg -q '^[[:space:]]+sudo$' "$project_dir/os/installer/mkosi.conf"
 rg -q '^[[:space:]]+lshw$' "$project_dir/os/installer/mkosi.conf"
+rg -q '^[[:space:]]+apt$' "$project_dir/os/mkosi.conf"
+rg -q '^[[:space:]]+lsb-release$' "$project_dir/os/mkosi.conf"
+rg -q '^[[:space:]]+grub-efi-amd64-signed$' "$project_dir/os/mkosi.conf"
+rg -q '^[[:space:]]+shim-signed$' "$project_dir/os/mkosi.conf"
 if rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"; then
   echo "Ubuntu 26.04 does not ship a curtin binary package; use the pinned source runtime" >&2
   exit 1
