@@ -123,6 +123,7 @@ rg -q 'journalctl .*_UID=' "$project_dir/tests/boot/assets/smoke-diagnostics"
 rg -q '^ID=deadrose$' "$project_dir/os/mkosi.extra/etc/os-release"
 rg -q '^ID_LIKE="ubuntu debian"$' "$project_dir/os/mkosi.extra/etc/os-release"
 rg -q '^UBUNTU_CODENAME=resolute$' "$project_dir/os/mkosi.extra/etc/os-release"
+rg -q '^localhost$' "$project_dir/os/mkosi.extra/etc/hostname"
 bash -n "$project_dir/os/mkosi.extra/etc/os-release"
 [[ "$(rg -o 'systemd\.firstboot=no' "$project_dir/os/installer/grub.cfg" | wc -l | tr -d ' ')" == 3 ]]
 rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/grub.cfg"

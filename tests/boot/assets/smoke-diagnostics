@@ -4,6 +4,8 @@ set -u
 echo "DEAD_ROSE_SMOKE_DIAGNOSTICS_BEGIN"
 for unit in \
   greetd.service \
+  dead-rose-state-init.service \
+  dead-rose-core.service \
   plymouth-quit.service \
   plymouth-quit-wait.service \
   systemd-user-sessions.service \
@@ -41,6 +43,7 @@ loginctl list-sessions --no-pager || true
 ps -eo user,pid,ppid,args | grep -E 'greetd|cage|dead-rose' || true
 journalctl -b --no-pager -n 500 \
   -u greetd.service \
+  -u dead-rose-state-init.service \
   -u dead-rose-core.service \
   -u dead-rose-installer-backend.service \
   -u dead-rose-session-ready.service \
