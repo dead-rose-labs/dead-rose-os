@@ -130,6 +130,8 @@ rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/
 rg -q 'test -f' "$project_dir/scripts/build-iso.sh"
 rg -q 'stage-curtin.sh' "$project_dir/scripts/build-iso.sh"
 rg -q 'backend-console.conf.*dead-rose-installer-backend.service.d/test-console.conf' "$project_dir/scripts/build-iso.sh"
+rg -q 'zz-dead-rose-smoke.cfg.*etc/default/grub.d/zz-dead-rose-smoke.cfg' "$project_dir/scripts/build-os.sh"
+rg -q 'console=tty0 console=ttyS0,115200n8' "$project_dir/tests/boot/assets/zz-dead-rose-smoke.cfg"
 rg -q 'rootfs\.tar\.gz' "$project_dir/scripts/build-os.sh"
 rg -q -- '--create --gzip' "$project_dir/scripts/build-os.sh"
 rg -q 'dead-rose-os.rootfs.tar.gz' "$project_dir/scripts/build-iso.sh"

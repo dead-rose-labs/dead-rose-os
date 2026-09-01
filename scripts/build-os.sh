@@ -46,6 +46,7 @@ ln -sf /usr/share/plymouth/themes/dead-rose/dead-rose.plymouth "$staging/usr/sha
 if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then
   install -Dm755 tests/boot/assets/session-ready "$staging/usr/lib/dead-rose-tests/session-ready"
   install -Dm755 tests/boot/assets/smoke-diagnostics "$staging/usr/lib/dead-rose-tests/smoke-diagnostics"
+  install -Dm644 tests/boot/assets/zz-dead-rose-smoke.cfg "$staging/etc/default/grub.d/zz-dead-rose-smoke.cfg"
   install -Dm644 tests/boot/assets/installed-session-ready.service "$staging/usr/lib/systemd/system/dead-rose-session-ready.service"
   install -Dm644 tests/boot/assets/smoke-diagnostics.service "$staging/usr/lib/systemd/system/dead-rose-smoke-diagnostics.service"
   ln -sf /usr/lib/systemd/system/dead-rose-session-ready.service "$staging/etc/systemd/system/graphical.target.wants/dead-rose-session-ready.service"
