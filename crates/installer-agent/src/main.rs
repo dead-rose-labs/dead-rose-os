@@ -21,6 +21,7 @@ const MAX_REQUEST_BYTES: u64 = 64 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 const EFI_PARTITION_BYTES: u64 = 512 * 1024 * 1024;
 const GPT_ALIGNMENT_RESERVE_BYTES: u64 = 2 * 1024 * 1024;
+const ROOT_PARTITION_NUMBER: u32 = 2;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -236,7 +237,7 @@ async fn install(
         "Initializing persistent system state…",
     )
     .await?;
-    let root_device = wait_for_partition(&disk.device, "ROOT").ok_or_else(|| {
+    let root_device = wait_for_partition(&disk.device, ROOT_PARTITION_NUMBER).ok_or_else(|| {
         (
             "root_partition_missing",
             "The installed ROOT partition was not found.".into(),
@@ -404,9 +405,9 @@ fn parent_disk(path: &Path) -> Option<PathBuf> {
     }
 }
 
-fn wait_for_partition(device: &Path, partition_name: &str) -> Option<PathBuf> {
+fn wait_for_partition(device: &Path, partition_number: u32) -> Option<PathBuf> {
     for _ in 0..100 {
-        if let Some(path) = named_partition(device, partition_name) {
+        if let Some(path) = numbered_partition(device, partition_number) {
             return Some(path);
         }
         std::thread::sleep(Duration::from_millis(100));
@@ -414,25 +415,23 @@ fn wait_for_partition(device: &Path, partition_name: &str) -> Option<PathBuf> {
     None
 }
 
-fn named_partition(device: &Path, partition_name: &str) -> Option<PathBuf> {
+fn numbered_partition(device: &Path, partition_number: u32) -> Option<PathBuf> {
     let canonical = fs::canonicalize(device).ok()?;
     let name = canonical.file_name()?.to_str()?;
     let sys_path = fs::canonicalize(Path::new("/sys/class/block").join(name)).ok()?;
     for entry in fs::read_dir(sys_path).ok()?.filter_map(Result::ok) {
-        if !entry.path().join("partition").exists() {
-            continue;
-        }
-        let Ok(uevent) = fs::read_to_string(entry.path().join("uevent")) else {
+        let Ok(number) = fs::read_to_string(entry.path().join("partition")) else {
             continue;
         };
-        if uevent
-            .lines()
-            .any(|line| line.strip_prefix("PARTNAME=") == Some(partition_name))
-        {
+        if partition_number_matches(&number, partition_number) {
             return Some(PathBuf::from("/dev").join(entry.file_name()));
         }
     }
     None
+}
+
+fn partition_number_matches(value: &str, expected: u32) -> bool {
+    value.trim().parse::<u32>().ok() == Some(expected)
 }
 
 fn map_validation_error(error: InstallerError) -> (&'static str, String) {
@@ -547,6 +546,7 @@ fn restart_system() -> Result<(), String> {
 mod tests {
     use super::{
         checksum_path, curtin_config, has_stable_id_shape, is_valid_hostname, is_valid_username,
+        partition_number_matches,
     };
     use dead_rose_system_types::InstallDisk;
     use std::path::Path;
@@ -600,6 +600,13 @@ mod tests {
         assert!(config.contains("uri: \"file:///payload/rootfs.tar.gz\""));
         assert!(config.contains("path: \"/dev/disk/by-id/virtio-test\""));
         assert!(!config.contains("STATE"));
+    }
+
+    #[test]
+    fn matches_kernel_partition_numbers() {
+        assert!(partition_number_matches("2\n", 2));
+        assert!(!partition_number_matches("1\n", 2));
+        assert!(!partition_number_matches("ROOT\n", 2));
     }
 
     #[test]

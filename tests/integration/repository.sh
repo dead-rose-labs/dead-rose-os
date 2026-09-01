@@ -109,7 +109,7 @@ rg -q 'Command::new\("/usr/bin/curtin"\)' "$project_dir/crates/installer-agent/s
 rg -q 'Command::new\("/usr/sbin/partprobe"\)' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'Command::new\("/usr/bin/udevadm"\)' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q '/dev/disk/by-id' "$project_dir/crates/installer-agent/src/main.rs"
-rg -q 'wait_for_partition\(&disk\.device, "ROOT"\)' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'wait_for_partition\(&disk\.device, ROOT_PARTITION_NUMBER\)' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'partition_name: EFI' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'partition_name: ROOT' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'version: 2' "$project_dir/crates/installer-agent/src/main.rs"
