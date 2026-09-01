@@ -340,7 +340,7 @@ fn curtin_config(disk: &InstallDisk, payload: &Path) -> io::Result<String> {
         .checked_sub(EFI_PARTITION_BYTES + GPT_ALIGNMENT_RESERVE_BYTES)
         .ok_or_else(|| io::Error::other("target disk cannot contain EFI and ROOT"))?;
     Ok(format!(
-        "storage:\n  version: 1\n  config:\n    - id: dead_rose_disk\n      type: disk\n      path: {disk_yaml}\n      ptable: gpt\n      wipe: superblock-recursive\n      grub_device: true\n    - id: efi_partition\n      type: partition\n      device: dead_rose_disk\n      number: 1\n      size: {EFI_PARTITION_BYTES}B\n      flag: boot\n      partition_name: EFI\n      wipe: superblock\n    - id: root_partition\n      type: partition\n      device: dead_rose_disk\n      number: 2\n      size: {root_size}B\n      partition_name: ROOT\n      wipe: superblock\n    - id: efi_format\n      type: format\n      volume: efi_partition\n      fstype: fat32\n      label: EFI\n    - id: root_format\n      type: format\n      volume: root_partition\n      fstype: ext4\n      label: ROOT\n    - id: root_mount\n      type: mount\n      device: root_format\n      path: /\n    - id: efi_mount\n      type: mount\n      device: efi_format\n      path: /boot/efi\nsources:\n  dead_rose_rootfs:\n    type: tgz\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
+        "storage:\n  version: 2\n  config:\n    - id: dead_rose_disk\n      type: disk\n      path: {disk_yaml}\n      ptable: gpt\n      wipe: superblock-recursive\n      grub_device: true\n    - id: efi_partition\n      type: partition\n      device: dead_rose_disk\n      number: 1\n      size: {EFI_PARTITION_BYTES}B\n      flag: boot\n      partition_name: EFI\n      wipe: superblock\n    - id: root_partition\n      type: partition\n      device: dead_rose_disk\n      number: 2\n      size: {root_size}B\n      partition_name: ROOT\n      wipe: superblock\n    - id: efi_format\n      type: format\n      volume: efi_partition\n      fstype: fat32\n      label: EFI\n    - id: root_format\n      type: format\n      volume: root_partition\n      fstype: ext4\n      label: ROOT\n    - id: root_mount\n      type: mount\n      device: root_format\n      path: /\n    - id: efi_mount\n      type: mount\n      device: efi_format\n      path: /boot/efi\nsources:\n  dead_rose_rootfs:\n    type: tgz\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
     ))
 }
 
@@ -591,6 +591,7 @@ mod tests {
             removable: false,
         };
         let config = curtin_config(&disk, Path::new("/payload/rootfs.tar.gz")).unwrap();
+        assert!(config.contains("version: 2"));
         assert!(config.contains("ptable: gpt"));
         assert!(config.contains("partition_name: EFI"));
         assert!(config.contains("partition_name: ROOT"));
