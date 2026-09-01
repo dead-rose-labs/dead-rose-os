@@ -1,6 +1,8 @@
 # Dead Rose OS — Technical Specification
 ## Milestone 0.1.0 — Foundation
 
+> Architecture note: storage, payload delivery, installation and Ubuntu-platform decisions in [Dead Rose OS — Architecture Simplification & Ubuntu Platform Integration Specification.md](Dead%20Rose%20OS%20%E2%80%94%20Architecture%20Simplification%20%26%20Ubuntu%20Platform%20Integration%20Specification.md) supersede the earlier A/B, dedicated STATE and raw-image requirements in this document.
+
 ## 1. Purpose
 
 Create the first bootable and installable version of **Dead Rose OS**.

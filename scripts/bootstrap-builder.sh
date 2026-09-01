@@ -24,11 +24,11 @@ if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "26.04" ]]; then echo "Suppo
 sudo apt-get update
 if [[ "$ci_mode" -eq 1 ]]; then
   sudo env DEBIAN_FRONTEND=noninteractive APT_LISTCHANGES_FRONTEND=none NEEDRESTART_MODE=a \
-    apt-get install -y bmaptool build-essential clang cpio curl dosfstools git grub-efi-amd64-bin initramfs-tools-core jq libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev mkosi mtools ovmf patch pkg-config qemu-system-x86 qemu-utils ripgrep squashfs-tools xorriso zstd
+    apt-get install -y build-essential clang cpio curl dosfstools git grub-efi-amd64-bin initramfs-tools-core jq libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev mkosi mtools ovmf pkg-config qemu-system-x86 qemu-utils ripgrep squashfs-tools xorriso zstd
   export CI=true
   export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 else
-  sudo apt-get install -y bmaptool build-essential clang cpio curl dosfstools git grub-efi-amd64-bin initramfs-tools-core jq libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev mkosi mtools ovmf patch pkg-config qemu-system-x86 qemu-utils ripgrep squashfs-tools xorriso zstd
+  sudo apt-get install -y build-essential clang cpio curl dosfstools git grub-efi-amd64-bin initramfs-tools-core jq libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev mkosi mtools ovmf pkg-config qemu-system-x86 qemu-utils ripgrep squashfs-tools xorriso zstd
 fi
 
 command -v corepack >/dev/null || { echo "MISSING corepack" >&2; exit 1; }
@@ -38,7 +38,7 @@ rustup toolchain install 1.93.0 --profile minimal --component clippy --component
 corepack pnpm --dir "$project_dir" install --frozen-lockfile
 
 missing=0
-for tool in bmaptool cargo mkosi patch xorriso qemu-system-x86_64 rg; do command -v "$tool" >/dev/null || { echo "MISSING $tool"; missing=1; }; done
+for tool in cargo mkosi xorriso qemu-system-x86_64 rg; do command -v "$tool" >/dev/null || { echo "MISSING $tool"; missing=1; }; done
 [[ (-e /usr/share/OVMF/OVMF_CODE_4M.fd && -e /usr/share/OVMF/OVMF_VARS_4M.fd) || (-e /usr/share/OVMF/OVMF_CODE.fd && -e /usr/share/OVMF/OVMF_VARS.fd) ]] || { echo "MISSING matching OVMF CODE/VARS firmware pair"; missing=1; }
 if [[ "$missing" -ne 0 ]]; then echo "Builder preparation incomplete." >&2; exit 1; fi
 echo "Dead Rose OS builder ready."

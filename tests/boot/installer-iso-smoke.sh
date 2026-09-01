@@ -46,10 +46,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# The production image intentionally reserves fixed A/B/STATE partitions and
-# therefore contains large zero-filled regions. Preserve their logical bytes
-# while letting the fresh qcow2 smoke target represent zero writes sparsely;
-# otherwise software-emulated QEMU spends most of the job materializing holes.
+# The smoke target is an ordinary empty disk. Curtin creates EFI and ROOT using
+# the same standard storage path used on physical hardware.
 qemu-system-x86_64 \
   -machine "q35,accel=$qemu_accel" -cpu "$qemu_cpu" -m 3072 -smp 2 \
   -drive "if=pflash,format=raw,unit=0,readonly=on,file=$firmware_code" \

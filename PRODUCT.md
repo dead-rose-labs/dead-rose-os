@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-React, TypeScript, Vite, Tauri 2, Tailwind CSS, shadcn/ui with Base UI, Rust, systemd, Cage, Plymouth, mkosi and xorriso. The local webview ships inside a native Linux appliance shell and never loads remote content.
+React, TypeScript, Vite, Tauri 2, Tailwind CSS, shadcn/ui with Base UI, Rust, Ubuntu Server, systemd, greetd, Cage, Curtin, GRUB, Plymouth, mkosi and xorriso. The local webview ships inside a native Linux appliance shell and never loads remote content.
 
 ## Users
 
@@ -16,7 +16,7 @@ Infrastructure administrators operating the primary Dead Rose control server loc
 
 ## Product Purpose
 
-Dead Rose OS is an installable control-plane operating system. Milestone 0.1.0 proves the permanent boot, display, authentication, session and image-based installation foundations; after login it intentionally shows only `Coming soon`.
+Dead Rose OS is an installable Ubuntu-based control-plane operating system. Milestone 0.1.0 proves the permanent boot, display, authentication, session and filesystem installation foundations; after login it intentionally shows only `Coming soon`.
 
 ## Positioning
 
@@ -28,7 +28,9 @@ UEFI amd64 hardware and QEMU; an Ubuntu Server 26.04 LTS build base; offline ins
 
 ## Capabilities and Constraints
 
-- Image-based A/B-ready GPT layout with EFI, ROOT-A, ROOT-B and persistent STATE partitions.
+- Standard GPT layout with a FAT32 EFI System Partition and one ext4 root filesystem.
+- Persistent product data in `/var/lib/dead-rose` on the ordinary root filesystem.
+- Ubuntu-owned kernel, systemd, GRUB, PAM/logind and apt/dpkg platform primitives.
 - Rust-owned Argon2id authentication, rate limiting and in-memory sessions over local typed IPC.
 - PAM/logind-managed greetd sessions for the unprivileged `deadrose-ui` shell and `deadrose-installer` live UI.
 - A typed, group-restricted installer socket and narrow root Curtin adapter.
@@ -41,7 +43,7 @@ Product name `Dead Rose OS`; Calm Technical / Wine Monochrome; dark-first; Geist
 
 ## Evidence on Hand
 
-- Binding technical specification: `docs/technical-tasks/Dead Rose OS — Technical Specification.md`.
+- Current architecture specification: `docs/technical-tasks/Dead Rose OS — Architecture Simplification & Ubuntu Platform Integration Specification.md`.
 - Binding design specification: `DESIGN.md`.
 - User-provided logo: `docs/images/dead-rose-os-logo.png`.
 - No testimonials, customer claims or production telemetry may be fabricated.

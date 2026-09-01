@@ -1,52 +1,33 @@
-# OS runtime rebuild audit
+# OS architecture simplification audit
 
-This audit records the repository state assessed before the runtime migration and the resulting action. The technical specification, not the prototype behavior, is authoritative.
+This audit records the KEEP/MODIFY/REMOVE decision required by the current Architecture Simplification & Ubuntu Platform Integration Specification. The current specification supersedes prototype assumptions in the earlier milestone document.
 
-| Component | Status | Action | Reason |
-|---|---|---|---|
-| Shell and installer React UI | KEEP | Preserve | Already matches the Dead Rose product and shared design system. |
-| `packages/ui`, fonts, logo and Plymouth theme | KEEP | Preserve | Source-controlled shared brand foundation. |
-| Rust auth, typed core IPC and persistent sessions | KEEP | Preserve | System authority is correctly outside React. |
-| GPT A/B plus `STATE` layout | KEEP | Preserve | Provides immutable/replaceable roots and persistent state. |
-| mkosi raw-image builder | REFACTOR | Stage runtime files in `build/` | The image model remains useful, but builds must not mutate source trees. |
-| ISO assembly and initrd live-root integration | REFACTOR | Retain and validate | The live boot mechanism is product-specific but independent of the broken graphical lifecycle. |
-| Installer frontend | REFACTOR | Make fully unprivileged | The screens are reusable; raw disk authority is not. |
-| Installer disk code | REPLACE | Curtin-backed root agent | Payload validation and discovery remain local, while a mature engine performs destructive installation. |
-| Root systemd Cage units | REMOVE | Replace with greetd | They bypass PAM/logind and required hand-made runtime/session state. |
-| Hand-made Cage environment | REMOVE | Replace with user session environment | Manual `XDG_RUNTIME_DIR` is a symptom of the obsolete lifecycle. |
-| Direct root installer UI service | REMOVE | Split UI/backend | Cage and the Tauri UI must not be root. |
-| GRUB/systemd-boot mixture | REPLACE | GRUB-only target profile | One supported boot path is easier to recover and validate. |
+| Component | Decision | Result |
+|---|---|---|
+| Shell and installer React UI | KEEP | Preserved the branded product experience and shared UI. |
+| `packages/ui`, fonts, logo and Plymouth theme | KEEP | Preserved the source-controlled brand foundation. |
+| Rust auth, typed IPC, Core and sessions | KEEP | System authority remains outside React. |
+| greetd, Cage, PAM and logind lifecycle | KEEP | Standard Linux session ownership remains intact. |
+| GRUB, Plymouth, live ISO and QEMU smoke | KEEP | Existing boot, recovery and verification paths remain. |
+| Installed payload build | MODIFY | mkosi now produces a directory rootfs which is archived for Curtin extraction. |
+| Installer storage configuration | MODIFY | Curtin creates one GPT `EFI` partition and one ext4 `ROOT` partition. |
+| Persistent product state | MODIFY | `/var/lib/dead-rose` is an ordinary root-filesystem directory. |
+| Installer privileged backend | MODIFY | It verifies the archive, invokes standard Curtin stages, then initializes state in `ROOT`. |
+| A/B partitioning and boot assumptions | REMOVE | `ROOT-A`, `ROOT-B` and future rollback scaffolding were removed. |
+| Dedicated `STATE` partition and mount | REMOVE | No present product requirement justifies a separate partition. |
+| Raw disk image delivery | REMOVE | Sparse RAW, zstd and bmap generation/copying were removed. |
+| Curtin bmap patch | REMOVE | The pinned upstream Curtin source is staged without local behavioral patches. |
+| systemd-repart layout | REMOVE | Installed disk layout is owned by the standard Curtin install configuration. |
 
-## Previous flow
-
-```text
-systemd system service (root)
-  -> manually prepared Cage environment
-  -> Cage
-  -> Tauri shell or installer with coupled privilege
-```
-
-This duplicated display-manager responsibilities, did not create a normal PAM/logind graphical session, and made an `XDG_RUNTIME_DIR` workaround part of the architecture.
-
-## Target flow
+## Resulting flow
 
 ```text
-systemd
-  +-> privileged Dead Rose core/installer agent
-  `-> greetd
-       -> PAM + logind unprivileged session
-            -> allowlisted dead-rose-session
-                 -> Cage
-                      -> Dead Rose Tauri UI
+Ubuntu live ISO
+  -> greetd/PAM/logind -> Cage -> unprivileged installer UI
+  -> typed restricted socket -> Rust installer agent
+  -> Curtin: GPT + EFI + ROOT, extract verified rootfs, install GRUB
+  -> initialize /var/lib/dead-rose in ROOT
+  -> reboot into Ubuntu systemd/greetd/Cage/Dead Rose shell
 ```
 
-## Migration plan completed
-
-1. Preserve UI, branding, authentication, GPT layout and viable image tooling.
-2. Delete both direct Cage system services and the manual environment file.
-3. Introduce one allowlisted session supervisor shared by installed and live profiles.
-4. Configure greetd sessions for dedicated non-login users.
-5. Move privileged installation behind a typed, restricted Unix socket and Curtin.
-6. Make installed GRUB, branded Plymouth, persistent identity and recovery explicit.
-7. Add static checks plus QEMU installer-to-installed boot smoke coverage.
-8. Document build, runtime, debugging and VM validation.
+This is an Ubuntu-based product OS, not a custom Linux distribution mechanism. Dead Rose remains responsible for its user experience and narrow system services while Ubuntu remains responsible for operating-system primitives.

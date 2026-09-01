@@ -19,6 +19,8 @@ use tracing::{error, info, warn};
 
 const MAX_REQUEST_BYTES: u64 = 64 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+const EFI_PARTITION_BYTES: u64 = 512 * 1024 * 1024;
+const GPT_ALIGNMENT_RESERVE_BYTES: u64 = 2 * 1024 * 1024;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -199,10 +201,9 @@ async fn install(
 
     let payload = PathBuf::from(
         env::var("DEAD_ROSE_PAYLOAD")
-            .unwrap_or_else(|_| "/usr/lib/dead-rose-installer/dead-rose-os.raw".into()),
+            .unwrap_or_else(|_| "/usr/lib/dead-rose-installer/dead-rose-os.rootfs.tar.gz".into()),
     );
-    let block_map = block_map_path(&payload);
-    let digest_path = checksum_path(&block_map);
+    let digest_path = checksum_path(&payload);
     progress(
         write,
         "payload_verification",
@@ -215,13 +216,13 @@ async fn install(
         .next()
         .ok_or_else(|| ("invalid_manifest", "The release manifest is empty.".into()))?
         .to_owned();
-    verify_payload(&block_map, &expected)
+    verify_payload(&payload, &expected)
         .map_err(|error| ("payload_verification_failed", error.to_string()))?;
 
     progress(
         write,
-        "image_write",
-        "Installing and synchronizing Dead Rose OS…",
+        "system_installation",
+        "Creating the Ubuntu filesystem and installing Dead Rose OS…",
     )
     .await?;
     run_curtin(&disk, &payload)
@@ -235,23 +236,27 @@ async fn install(
         "Initializing persistent system state…",
     )
     .await?;
-    let state_device = wait_for_state_partition(&disk.device).ok_or_else(|| {
+    let root_device = wait_for_partition(&disk.device, "ROOT").ok_or_else(|| {
         (
-            "state_partition_missing",
-            "The target STATE partition was not found.".into(),
+            "root_partition_missing",
+            "The installed ROOT partition was not found.".into(),
         )
     })?;
-    let state_root = PathBuf::from(
-        env::var("DEAD_ROSE_STATE_MOUNT")
-            .unwrap_or_else(|_| "/run/dead-rose-installer/state".into()),
+    let target_root = PathBuf::from(
+        env::var("DEAD_ROSE_TARGET_MOUNT")
+            .unwrap_or_else(|_| "/run/dead-rose-installer/target".into()),
     );
-    fs::create_dir_all(&state_root)
+    fs::create_dir_all(&target_root)
         .map_err(|error| ("state_initialization_failed", error.to_string()))?;
-    mount_state(&state_device, &state_root)
+    mount_root(&root_device, &target_root)
         .map_err(|error| ("state_initialization_failed", error))?;
 
-    let state_result = initialize_state(write, &state_root, &hostname, &username, &password).await;
-    let unmount_result = unmount_state(&state_root);
+    let state_root = target_root.join("var/lib/dead-rose");
+    let state_result = match fs::create_dir_all(&state_root) {
+        Ok(()) => initialize_state(write, &state_root, &hostname, &username, &password).await,
+        Err(error) => Err(("state_initialization_failed", error.to_string())),
+    };
+    let unmount_result = unmount_root(&target_root);
     state_result?;
     unmount_result.map_err(|error| ("state_sync_failed", error))?;
     Ok(())
@@ -330,15 +335,13 @@ fn curtin_config(disk: &InstallDisk, payload: &Path) -> io::Result<String> {
     let disk_yaml = serde_json::to_string(&disk.stable_id)?;
     let payload_uri = format!("file://{}", payload.display());
     let payload_yaml = serde_json::to_string(&payload_uri)?;
+    let root_size = disk
+        .size_bytes
+        .checked_sub(EFI_PARTITION_BYTES + GPT_ALIGNMENT_RESERVE_BYTES)
+        .ok_or_else(|| io::Error::other("target disk cannot contain EFI and ROOT"))?;
     Ok(format!(
-        "stages:\n  - early\n  - partitioning\nblock-meta:\n  devices:\n    - {disk_yaml}\nsources:\n  dead_rose_image:\n    type: dd-bmap\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
+        "storage:\n  version: 1\n  config:\n    - id: dead_rose_disk\n      type: disk\n      path: {disk_yaml}\n      ptable: gpt\n      wipe: superblock-recursive\n      grub_device: true\n    - id: efi_partition\n      type: partition\n      device: dead_rose_disk\n      number: 1\n      size: {EFI_PARTITION_BYTES}B\n      flag: boot\n      partition_name: EFI\n      wipe: superblock\n    - id: root_partition\n      type: partition\n      device: dead_rose_disk\n      number: 2\n      size: {root_size}B\n      partition_name: ROOT\n      wipe: superblock\n    - id: efi_format\n      type: format\n      volume: efi_partition\n      fstype: fat32\n      label: EFI\n    - id: root_format\n      type: format\n      volume: root_partition\n      fstype: ext4\n      label: ROOT\n    - id: root_mount\n      type: mount\n      device: root_format\n      path: /\n    - id: efi_mount\n      type: mount\n      device: efi_format\n      path: /boot/efi\nsources:\n  dead_rose_rootfs:\n    type: tgz\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
     ))
-}
-
-fn block_map_path(payload: &Path) -> PathBuf {
-    let mut path = payload.as_os_str().to_os_string();
-    path.push(".bmap");
-    path.into()
 }
 
 fn checksum_path(payload: &Path) -> PathBuf {
@@ -401,9 +404,9 @@ fn parent_disk(path: &Path) -> Option<PathBuf> {
     }
 }
 
-fn wait_for_state_partition(device: &Path) -> Option<PathBuf> {
+fn wait_for_partition(device: &Path, partition_name: &str) -> Option<PathBuf> {
     for _ in 0..100 {
-        if let Some(path) = state_partition(device) {
+        if let Some(path) = named_partition(device, partition_name) {
             return Some(path);
         }
         std::thread::sleep(Duration::from_millis(100));
@@ -411,7 +414,7 @@ fn wait_for_state_partition(device: &Path) -> Option<PathBuf> {
     None
 }
 
-fn state_partition(device: &Path) -> Option<PathBuf> {
+fn named_partition(device: &Path, partition_name: &str) -> Option<PathBuf> {
     let canonical = fs::canonicalize(device).ok()?;
     let name = canonical.file_name()?.to_str()?;
     let sys_path = fs::canonicalize(Path::new("/sys/class/block").join(name)).ok()?;
@@ -422,7 +425,10 @@ fn state_partition(device: &Path) -> Option<PathBuf> {
         let Ok(uevent) = fs::read_to_string(entry.path().join("uevent")) else {
             continue;
         };
-        if uevent.lines().any(|line| line == "PARTNAME=STATE") {
+        if uevent
+            .lines()
+            .any(|line| line.strip_prefix("PARTNAME=") == Some(partition_name))
+        {
             return Some(PathBuf::from("/dev").join(entry.file_name()));
         }
     }
@@ -497,7 +503,7 @@ async fn send_error(
 }
 
 #[cfg(target_os = "linux")]
-fn mount_state(source: &Path, target: &Path) -> Result<(), String> {
+fn mount_root(source: &Path, target: &Path) -> Result<(), String> {
     use nix::mount::{MsFlags, mount};
     mount(
         Some(source),
@@ -510,17 +516,17 @@ fn mount_state(source: &Path, target: &Path) -> Result<(), String> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn mount_state(_: &Path, _: &Path) -> Result<(), String> {
+fn mount_root(_: &Path, _: &Path) -> Result<(), String> {
     Err("installer_requires_linux".into())
 }
 
 #[cfg(target_os = "linux")]
-fn unmount_state(target: &Path) -> Result<(), String> {
+fn unmount_root(target: &Path) -> Result<(), String> {
     nix::mount::umount(target).map_err(|error| error.to_string())
 }
 
 #[cfg(not(target_os = "linux"))]
-fn unmount_state(_: &Path) -> Result<(), String> {
+fn unmount_root(_: &Path) -> Result<(), String> {
     Err("installer_requires_linux".into())
 }
 
@@ -540,8 +546,7 @@ fn restart_system() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        block_map_path, checksum_path, curtin_config, has_stable_id_shape, is_valid_hostname,
-        is_valid_username,
+        checksum_path, curtin_config, has_stable_id_shape, is_valid_hostname, is_valid_username,
     };
     use dead_rose_system_types::InstallDisk;
     use std::path::Path;
@@ -577,7 +582,7 @@ mod tests {
     }
 
     #[test]
-    fn generates_curtin_bmap_image_config() {
+    fn generates_standard_curtin_filesystem_config() {
         let disk = InstallDisk {
             device: "/dev/vda".into(),
             stable_id: "/dev/disk/by-id/virtio-test".into(),
@@ -585,19 +590,22 @@ mod tests {
             size_bytes: 40 * 1024 * 1024 * 1024,
             removable: false,
         };
-        let config = curtin_config(&disk, Path::new("/payload/dead-rose.raw")).unwrap();
-        assert!(config.contains("type: dd-bmap"));
-        assert!(config.contains("uri: \"file:///payload/dead-rose.raw\""));
-        assert!(config.contains("\"/dev/disk/by-id/virtio-test\""));
+        let config = curtin_config(&disk, Path::new("/payload/rootfs.tar.gz")).unwrap();
+        assert!(config.contains("ptable: gpt"));
+        assert!(config.contains("partition_name: EFI"));
+        assert!(config.contains("partition_name: ROOT"));
+        assert!(config.contains("fstype: ext4"));
+        assert!(config.contains("type: tgz"));
+        assert!(config.contains("uri: \"file:///payload/rootfs.tar.gz\""));
+        assert!(config.contains("path: \"/dev/disk/by-id/virtio-test\""));
+        assert!(!config.contains("STATE"));
     }
 
     #[test]
-    fn derives_block_map_and_checksum_paths() {
-        let block_map = block_map_path(Path::new("/payload/dead-rose.raw"));
-        assert_eq!(block_map, Path::new("/payload/dead-rose.raw.bmap"));
+    fn keeps_the_rootfs_suffix_in_the_checksum_path() {
         assert_eq!(
-            checksum_path(&block_map),
-            Path::new("/payload/dead-rose.raw.bmap.sha256")
+            checksum_path(Path::new("/payload/rootfs.tar.gz")),
+            Path::new("/payload/rootfs.tar.gz.sha256")
         );
     }
 }

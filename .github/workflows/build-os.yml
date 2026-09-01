@@ -39,7 +39,7 @@ jobs:
       - name: Run repository quality checks
         run: ./dr test
 
-      - name: Build OS image
+      - name: Build Ubuntu root filesystem payload
         run: DEAD_ROSE_TEST_MARKERS=1 ./dr build
 
       - name: Build installer ISO

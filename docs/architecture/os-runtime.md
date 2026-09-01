@@ -13,22 +13,24 @@ systemd graphical.target
   -> dead-rose-shell (Tauri/React)
 ```
 
-`greetd` owns VT, PAM and logind integration. `dead-rose-session` is deliberately small: it accepts only the source-controlled shell and installer executable paths, verifies that the executable is root-owned, supervises Cage, and rate-limits crash loops. It is not a generic launcher. The graphical account has no login shell and is never privileged.
+Ubuntu Server 26.04 provides the kernel, systemd, GRUB, Plymouth, PAM, logind, greetd, Cage, apt and dpkg. Dead Rose owns the branded boot, shell, installer, authentication service and typed local IPC layered on that platform. It does not replace standard Linux lifecycle or package-management primitives.
 
-`dead-rose-core` is the system authority for authentication and persistent product state. Typed local IPC is used at the UI boundary. The persistent `STATE` filesystem is mounted at `/var/lib/dead-rose`; `dead-rose-state-init` applies the installed hostname before the core and graphical session start.
+`greetd` owns VT, PAM and logind integration. `dead-rose-session` accepts only the source-controlled shell and installer executable paths, verifies that the executable is root-owned, supervises Cage, and rate-limits crash loops. It is not a generic launcher. The graphical account has no login shell and is never privileged.
+
+`dead-rose-core` is the system authority for authentication and product state. Typed local IPC is used at the UI boundary. Persistent Dead Rose data is an ordinary directory at `/var/lib/dead-rose` on the root filesystem; `dead-rose-state-init` applies the installed hostname before the core and graphical session start.
 
 ## Live installer
 
 The installer uses the same session chain with the `deadrose-installer` account and `dead-rose-installer` application. Its Tauri process is unprivileged and contains no disk-writing implementation.
 
-Privileged installation is isolated in `dead-rose-installer-agent`, a root system service reachable through `/run/dead-rose-installer/backend.sock`. Access is restricted to `deadrose-installer-ipc`. The protocol contains a fixed set of requests: list disks, install, and reboot. Installation requires the selected kernel device and matching stable `/dev/disk/by-id` identity, rejects the boot medium, verifies the embedded block-map manifest SHA-256, and invokes Curtin with a generated fixed-shape configuration. The RAW payload is sparse and compressed by the ISO's SquashFS, so it remains seekable at runtime. The pinned Curtin source receives the reviewed `patches/curtin/dd-bmap.patch` and delegates the fixed image-copy operation to Ubuntu's `bmaptool`; bmaptool reads only mapped ranges and verifies their SHA-256 checksums while writing. Curtin then relocates the backup GPT header to the actual target-disk boundary and discovers ROOT-A through the standard `/curtin` image marker. Before initializing STATE, the Rust backend explicitly refreshes the selected disk's partition table and waits for udev. No generic command execution is exposed.
+Privileged installation is isolated in `dead-rose-installer-agent`, a root system service reachable through `/run/dead-rose-installer/backend.sock`. Access is restricted to `deadrose-installer-ipc`. The protocol contains a fixed set of requests: list disks, install, and reboot. Installation requires the selected kernel device and matching stable `/dev/disk/by-id` identity, rejects the boot medium, verifies the embedded root-filesystem archive SHA-256, and invokes Curtin with a generated fixed-shape configuration. No generic command execution is exposed.
 
-Ubuntu 26.04 does not publish Curtin as a binary archive package. The live-image build therefore stages Canonical's upstream Curtin source at the immutable commit and SHA-256 recorded in `scripts/stage-curtin.sh`, while all runtime dependencies still come from Ubuntu packages. This keeps the mature engine, makes the supply-chain input reviewable, and prevents an unpinned network dependency.
+Curtin uses standard Ubuntu/Linux storage operations to create a GPT containing a 512 MiB FAT32 `EFI` partition and one ext4 `ROOT` partition using the remaining disk. It extracts the verified Ubuntu root filesystem archive into `ROOT`, writes `/etc/fstab`, and installs GRUB. The backend refreshes the target partition table, mounts `ROOT`, and writes the administrator credential and hostname under `/var/lib/dead-rose`. The UI reports real backend progress and failures.
 
-Curtin writes the complete source image, preserving its GPT `EFI`, `ROOT-A`, `ROOT-B`, and `STATE` layout. The backend then locates `STATE` by partition metadata on the selected disk, mounts only that partition, and writes the administrator credential and hostname state. The UI reports real backend progress and failures.
+Ubuntu 26.04 does not publish Curtin as a binary archive package. The live-image build therefore stages Canonical's upstream Curtin source at the immutable commit and SHA-256 recorded in `scripts/stage-curtin.sh`, while runtime dependencies come from Ubuntu packages. The staged source is unmodified and its required `tgz` extraction support is validated during the build.
 
 ## Build profiles
 
-`os/mkosi.conf` builds the installed GRUB disk image. `os/installer/mkosi.conf` builds the live root used by the custom UEFI installer ISO. Runtime files are staged under `build/`; the source `mkosi.extra` tree is not mutated during builds.
+`os/mkosi.conf` builds the Ubuntu directory root used to produce the verified root-filesystem archive. `os/installer/mkosi.conf` builds the live root used by the custom UEFI installer ISO. Runtime files are staged under `build/`; the source `mkosi.extra` tree is not mutated during builds.
 
 Boot-smoke marker services are included only when `DEAD_ROSE_TEST_MARKERS=1`. Release artifacts are rebuilt without those services.

@@ -10,7 +10,7 @@ required=(
   os/pam/greetd
   os/systemd/greetd-installed.conf os/systemd/greetd-installer.conf
   os/systemd/dead-rose-core.service os/systemd/dead-rose-installer-backend.service
-  os/systemd/dead-rose-state-init.service os/systemd/dead-rose-state.mount
+  os/systemd/dead-rose-state-init.service
   os/grub/99-dead-rose.cfg os/installer/grub.cfg
   crates/session/src/main.rs crates/installer-agent/src/main.rs
   docs/architecture/rebuild-audit.md docs/architecture/os-runtime.md docs/build.md docs/debug.md
@@ -18,7 +18,7 @@ required=(
 )
 for path in "${required[@]}"; do [[ -f "$project_dir/$path" ]] || { echo "Missing $path" >&2; exit 1; }; done
 
-for obsolete in os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service os/cage/environment; do
+for obsolete in os/systemd/dead-rose-graphical.service os/systemd/dead-rose-installer.service os/systemd/dead-rose-state.mount os/cage/environment os/mkosi.repart patches/curtin/dd-bmap.patch; do
   [[ ! -e "$project_dir/$obsolete" ]] || { echo "Obsolete runtime file remains: $obsolete" >&2; exit 1; }
 done
 
@@ -31,7 +31,7 @@ if rg -n 'localStorage|sessionStorage|run_command|Command::new\(.*sh' "$project_
   exit 1
 fi
 
-rg -q '^Bootloader=grub$' "$project_dir/os/mkosi.conf"
+rg -q '^Format=directory$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+greetd$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+greetd$' "$project_dir/os/installer/mkosi.conf"
 rg -q '^[[:space:]]+login$' "$project_dir/os/mkosi.conf"
@@ -42,11 +42,12 @@ if rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"; then
 fi
 rg -q '^curtin_commit="[0-9a-f]{40}"$' "$project_dir/scripts/stage-curtin.sh"
 rg -q '^curtin_sha256="[0-9a-f]{64}"$' "$project_dir/scripts/stage-curtin.sh"
-rg -q 'patches/curtin/dd-bmap.patch' "$project_dir/scripts/stage-curtin.sh"
-rg -q "'dd-bmap': ''" "$project_dir/patches/curtin/dd-bmap.patch"
-rg -q "'/usr/bin/bmaptool', 'copy'" "$project_dir/patches/curtin/dd-bmap.patch"
-rg -q "'sgdisk', '--move-second-header'" "$project_dir/patches/curtin/dd-bmap.patch"
-rg -q '^[[:space:]]+bmaptool$' "$project_dir/os/installer/mkosi.conf"
+rg -q 'extract_root_tgz_url' "$project_dir/scripts/stage-curtin.sh"
+if rg -n 'ROOT-A|ROOT-B|PARTNAME=STATE|dd-bmap|bmaptool|systemd-repart|raw\.zst|raw\.bmap' \
+  "$project_dir/os" "$project_dir/scripts" "$project_dir/crates"; then
+  echo "Obsolete A/B, STATE or raw-image installation architecture remains" >&2
+  exit 1
+fi
 if rg -q 'gnome-shell|gdm3|ubuntu-desktop|plasma-desktop|xfce4' "$project_dir/os" --glob 'mkosi.conf'; then
   echo "A conventional desktop package is forbidden" >&2
   exit 1
@@ -81,7 +82,8 @@ if rg -q '^m deadrose-(ui|installer) (video|render|input)$' "$project_dir/os/sys
 fi
 rg -q '^User=root$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Group=deadrose-installer-ipc$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
-rg -q '^Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.raw$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
+rg -q '^Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.rootfs.tar.gz$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
+rg -q '^Environment=DEAD_ROSE_TARGET_MOUNT=/run/dead-rose-installer/target$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 
 rg -q 'InstallerRequest::Install' "$project_dir/apps/installer/src-tauri/src/main.rs"
 rg -q 'UnixStream::connect' "$project_dir/apps/installer/src-tauri/src/main.rs"
@@ -93,7 +95,10 @@ rg -q 'Command::new\("/usr/bin/curtin"\)' "$project_dir/crates/installer-agent/s
 rg -q 'Command::new\("/usr/sbin/partprobe"\)' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'Command::new\("/usr/bin/udevadm"\)' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q '/dev/disk/by-id' "$project_dir/crates/installer-agent/src/main.rs"
-rg -q 'PARTNAME=STATE' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'wait_for_partition\(&disk\.device, "ROOT"\)' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'partition_name: EFI' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'partition_name: ROOT' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'type: tgz' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'installation_in_progress' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'repair_state_ownership' "$project_dir/crates/session/src/bin/dead-rose-state-init.rs"
 rg -q 'tracing_journald::layer' "$project_dir/crates/session/src/main.rs"
@@ -108,14 +113,13 @@ rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/
 rg -q 'test -f' "$project_dir/scripts/build-iso.sh"
 rg -q 'stage-curtin.sh' "$project_dir/scripts/build-iso.sh"
 rg -q 'backend-console.conf.*dead-rose-installer-backend.service.d/test-console.conf' "$project_dir/scripts/build-iso.sh"
-rg -q 'bmaptool create --output' "$project_dir/scripts/build-os.sh"
-rg -q 'staging/curtin' "$project_dir/scripts/build-os.sh"
-rg -q 'cp --sparse=always' "$project_dir/scripts/build-iso.sh"
+rg -q 'rootfs\.tar\.gz' "$project_dir/scripts/build-os.sh"
+rg -q -- '--create --gzip' "$project_dir/scripts/build-os.sh"
+rg -q 'dead-rose-os.rootfs.tar.gz' "$project_dir/scripts/build-iso.sh"
 rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"
 rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_SHELL_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_TIMEOUT_SECONDS:-5400' "$project_dir/tests/boot/installer-iso-smoke.sh"
-[[ "$(rg -o 'discard=unmap,detect-zeroes=unmap' "$project_dir/tests/boot/installer-iso-smoke.sh" | wc -l | tr -d ' ')" == 2 ]]
 
 echo "Repository runtime invariants pass."

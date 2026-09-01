@@ -3,11 +3,20 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 version="$(tr -d '[:space:]' < "$project_dir/VERSION")"
 output_directory="$project_dir/build"
-output_name="dead-rose-os-${version}-amd64.raw"
+output_name="dead-rose-os-${version}-amd64.root"
 output="$output_directory/$output_name"
+archive="$output_directory/dead-rose-os-${version}-amd64.rootfs.tar.gz"
 staging="$output_directory/os-extra"
 mkdir -p "$project_dir/build/logs"
 cd "$project_dir"
+case "$output" in
+  "$project_dir"/build/*) ;;
+  *) echo "Refusing unsafe rootfs output" >&2; exit 1 ;;
+esac
+if [[ -d "$output" ]]; then
+  sudo find "$output" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+fi
+rm -f -- "$archive" "$archive.sha256"
 corepack pnpm install --frozen-lockfile
 corepack pnpm build
 cargo build --release --locked -p dead-rose-core -p dead-rose-shell -p dead-rose-session --bins
@@ -21,7 +30,6 @@ install -Dm644 os/sysusers/dead-rose.conf "$staging/usr/lib/sysusers.d/dead-rose
 install -Dm644 os/tmpfiles/dead-rose.conf "$staging/usr/lib/tmpfiles.d/dead-rose.conf"
 install -Dm644 os/systemd/dead-rose-core.service "$staging/usr/lib/systemd/system/dead-rose-core.service"
 install -Dm644 os/systemd/dead-rose-state-init.service "$staging/usr/lib/systemd/system/dead-rose-state-init.service"
-install -Dm644 os/systemd/dead-rose-state.mount "$staging/usr/lib/systemd/system/var-lib-dead\x2drose.mount"
 install -Dm644 os/greetd/installed.toml "$staging/etc/greetd/config.toml"
 install -Dm644 os/pam/greetd "$staging/etc/pam.d/greetd"
 install -Dm644 os/systemd/greetd-installed.conf "$staging/etc/systemd/system/greetd.service.d/dead-rose.conf"
@@ -29,14 +37,10 @@ install -Dm644 os/grub/99-dead-rose.cfg "$staging/etc/default/grub.d/99-dead-ros
 install -Dm644 os/plymouth/dead-rose/dead-rose.plymouth "$staging/usr/share/plymouth/themes/dead-rose/dead-rose.plymouth"
 install -Dm644 os/plymouth/dead-rose/dead-rose.script "$staging/usr/share/plymouth/themes/dead-rose/dead-rose.script"
 install -Dm644 assets/brand/dead-rose-os-logo.png "$staging/usr/share/plymouth/themes/dead-rose/dead-rose-os-logo.png"
-# Curtin's mature DD-image flow locates the root partition by this directory
-# after writing the image. It is inert in the installed runtime.
-install -d -m0755 "$staging/curtin"
-mkdir -p "$staging/etc/systemd/system/graphical.target.wants" "$staging/etc/systemd/system/multi-user.target.wants" "$staging/etc/systemd/system/local-fs.target.wants" "$staging/usr/share/plymouth/themes"
+mkdir -p "$staging/etc/systemd/system/graphical.target.wants" "$staging/etc/systemd/system/multi-user.target.wants" "$staging/usr/share/plymouth/themes"
 ln -sf /usr/lib/systemd/system/greetd.service "$staging/etc/systemd/system/graphical.target.wants/greetd.service"
 ln -sf /usr/lib/systemd/system/dead-rose-core.service "$staging/etc/systemd/system/multi-user.target.wants/dead-rose-core.service"
 ln -sf /usr/lib/systemd/system/dead-rose-state-init.service "$staging/etc/systemd/system/multi-user.target.wants/dead-rose-state-init.service"
-ln -sf '/usr/lib/systemd/system/var-lib-dead\x2drose.mount' "$staging/etc/systemd/system/local-fs.target.wants/var-lib-dead\x2drose.mount"
 ln -sf /usr/lib/systemd/system/graphical.target "$staging/etc/systemd/system/default.target"
 ln -sf /usr/share/plymouth/themes/dead-rose/dead-rose.plymouth "$staging/usr/share/plymouth/themes/default.plymouth"
 if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then
@@ -48,9 +52,7 @@ if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then
 fi
 mkosi --directory os --output-directory "$output_directory" --output "$output_name" --extra-tree "$staging" summary
 sudo mkosi --directory os --output-directory "$output_directory" --output "$output_name" --extra-tree "$staging" build 2>&1 | tee "$project_dir/build/logs/mkosi.log"
-sudo chown -- "$(id -u):$(id -g)" "$output"
-sha256sum "$output" > "$output.sha256"
-bmaptool create --output "$output.bmap" "$output"
-sha256sum "$output.bmap" > "$output.bmap.sha256"
-zstd -T0 -3 --force "$output" -o "$output.zst"
-sha256sum "$output.zst" > "$output.zst.sha256"
+sudo tar --create --gzip --sparse --acls --xattrs --xattrs-include='*' \
+  --numeric-owner --file="$archive" --directory="$output" .
+sudo chown -- "$(id -u):$(id -g)" "$archive"
+sha256sum "$archive" > "$archive.sha256"

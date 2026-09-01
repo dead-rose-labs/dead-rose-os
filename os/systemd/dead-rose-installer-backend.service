@@ -9,8 +9,8 @@ Type=simple
 User=root
 Group=deadrose-installer-ipc
 ExecStart=/usr/lib/dead-rose/dead-rose-installer-agent
-Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.raw
-Environment=DEAD_ROSE_STATE_MOUNT=/run/dead-rose-installer/state
+Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.rootfs.tar.gz
+Environment=DEAD_ROSE_TARGET_MOUNT=/run/dead-rose-installer/target
 Environment=DEAD_ROSE_INSTALLER_MEDIA=/dev/disk/by-label/DEAD_ROSE_INSTALLER
 Restart=on-failure
 RestartSec=3s
