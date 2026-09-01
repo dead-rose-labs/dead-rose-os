@@ -22,7 +22,10 @@ ProtectHome=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
-RestrictSUIDSGID=yes
+# Curtin must preserve the Ubuntu rootfs ownership and SUID/SGID modes. On
+# systemd 259, enabling this filter also makes GNU tar's openat2() fail with
+# ENOSYS, preventing all rootfs extraction.
+RestrictSUIDSGID=no
 LockPersonality=yes
 
 [Install]

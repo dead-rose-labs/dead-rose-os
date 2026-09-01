@@ -82,6 +82,7 @@ if rg -q '^m deadrose-(ui|installer) (video|render|input)$' "$project_dir/os/sys
 fi
 rg -q '^User=root$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Group=deadrose-installer-ipc$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
+rg -q '^RestrictSUIDSGID=no$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Environment=DEAD_ROSE_PAYLOAD=/usr/lib/dead-rose-installer/dead-rose-os.rootfs.tar.gz$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 rg -q '^Environment=DEAD_ROSE_TARGET_MOUNT=/run/dead-rose-installer/target$' "$project_dir/os/systemd/dead-rose-installer-backend.service"
 
