@@ -135,6 +135,8 @@ rg -q 'zz-dead-rose-smoke.cfg.*etc/default/grub.d/zz-dead-rose-smoke.cfg' "$proj
 rg -q 'console=tty0 console=ttyS0,115200n8' "$project_dir/tests/boot/assets/zz-dead-rose-smoke.cfg"
 rg -q 'rootfs\.tar\.gz' "$project_dir/scripts/build-os.sh"
 rg -q -- '--create --gzip' "$project_dir/scripts/build-os.sh"
+rg -q 'rmdir -- "\$output"' "$project_dir/scripts/build-os.sh"
+rg -q 'rmdir -- "\$generated"' "$project_dir/scripts/build-iso.sh"
 rg -q 'dead-rose-os.rootfs.tar.gz' "$project_dir/scripts/build-iso.sh"
 rg -q 'stub-resolv\.conf.*installer_root/etc/resolv\.conf' "$project_dir/scripts/build-iso.sh"
 rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"

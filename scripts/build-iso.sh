@@ -100,6 +100,7 @@ for generated in "$installer_root" "$iso_root" "$project_dir/build/efi"; do
   esac
   if [[ -d "$generated" ]]; then
     sudo find "$generated" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+    sudo rmdir -- "$generated"
   fi
 done
 mkdir -p "$iso_live" "$project_dir/build/logs"

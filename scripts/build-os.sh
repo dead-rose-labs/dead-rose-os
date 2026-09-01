@@ -15,6 +15,7 @@ case "$output" in
 esac
 if [[ -d "$output" ]]; then
   sudo find "$output" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+  sudo rmdir -- "$output"
 fi
 rm -f -- "$archive" "$archive.sha256"
 corepack pnpm install --frozen-lockfile
