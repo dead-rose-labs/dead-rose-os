@@ -226,6 +226,8 @@ async fn install(
     .await?;
     run_curtin(&disk, &payload)
         .map_err(|error| ("installation_engine_failed", error.to_string()))?;
+    refresh_partition_table(&disk)
+        .map_err(|error| ("partition_table_refresh_failed", error.to_string()))?;
 
     progress(
         write,
@@ -293,6 +295,34 @@ fn run_curtin(disk: &InstallDisk, payload: &Path) -> io::Result<()> {
         Ok(())
     } else {
         Err(io::Error::other(format!("curtin exited with {status}")))
+    }
+}
+
+fn refresh_partition_table(disk: &InstallDisk) -> io::Result<()> {
+    let partprobe = Command::new("/usr/sbin/partprobe")
+        .arg(&disk.stable_id)
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+    if !partprobe.success() {
+        return Err(io::Error::other(format!(
+            "partprobe exited with {partprobe}"
+        )));
+    }
+
+    let settle = Command::new("/usr/bin/udevadm")
+        .args(["settle", "--timeout=30"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+    if settle.success() {
+        Ok(())
+    } else {
+        Err(io::Error::other(format!(
+            "udevadm settle exited with {settle}"
+        )))
     }
 }
 
@@ -389,7 +419,9 @@ fn state_partition(device: &Path) -> Option<PathBuf> {
         if !entry.path().join("partition").exists() {
             continue;
         }
-        let uevent = fs::read_to_string(entry.path().join("uevent")).ok()?;
+        let Ok(uevent) = fs::read_to_string(entry.path().join("uevent")) else {
+            continue;
+        };
         if uevent.lines().any(|line| line == "PARTNAME=STATE") {
             return Some(PathBuf::from("/dev").join(entry.file_name()));
         }

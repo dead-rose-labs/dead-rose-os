@@ -90,6 +90,8 @@ if rg -q 'dead-rose-installer-core|nix.workspace' "$project_dir/apps/installer/s
   exit 1
 fi
 rg -q 'Command::new\("/usr/bin/curtin"\)' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'Command::new\("/usr/sbin/partprobe"\)' "$project_dir/crates/installer-agent/src/main.rs"
+rg -q 'Command::new\("/usr/bin/udevadm"\)' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q '/dev/disk/by-id' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'PARTNAME=STATE' "$project_dir/crates/installer-agent/src/main.rs"
 rg -q 'installation_in_progress' "$project_dir/crates/installer-agent/src/main.rs"
