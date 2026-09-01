@@ -199,9 +199,10 @@ async fn install(
 
     let payload = PathBuf::from(
         env::var("DEAD_ROSE_PAYLOAD")
-            .unwrap_or_else(|_| "/usr/lib/dead-rose-installer/dead-rose-os.raw.zst".into()),
+            .unwrap_or_else(|_| "/usr/lib/dead-rose-installer/dead-rose-os.raw".into()),
     );
-    let digest_path = checksum_path(&payload);
+    let block_map = block_map_path(&payload);
+    let digest_path = checksum_path(&block_map);
     progress(
         write,
         "payload_verification",
@@ -214,7 +215,7 @@ async fn install(
         .next()
         .ok_or_else(|| ("invalid_manifest", "The release manifest is empty.".into()))?
         .to_owned();
-    verify_payload(&payload, &expected)
+    verify_payload(&block_map, &expected)
         .map_err(|error| ("payload_verification_failed", error.to_string()))?;
 
     progress(
@@ -300,8 +301,14 @@ fn curtin_config(disk: &InstallDisk, payload: &Path) -> io::Result<String> {
     let payload_uri = format!("file://{}", payload.display());
     let payload_yaml = serde_json::to_string(&payload_uri)?;
     Ok(format!(
-        "stages:\n  - early\n  - partitioning\nblock-meta:\n  devices:\n    - {disk_yaml}\nsources:\n  dead_rose_image:\n    type: dd-zst\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
+        "stages:\n  - early\n  - partitioning\nblock-meta:\n  devices:\n    - {disk_yaml}\nsources:\n  dead_rose_image:\n    type: dd-bmap\n    uri: {payload_yaml}\ninstall:\n  log_file: /var/log/dead-rose-installer/curtin.log\n  error_tarfile: /var/log/dead-rose-installer/curtin-error.tar\n"
     ))
+}
+
+fn block_map_path(payload: &Path) -> PathBuf {
+    let mut path = payload.as_os_str().to_os_string();
+    path.push(".bmap");
+    path.into()
 }
 
 fn checksum_path(payload: &Path) -> PathBuf {
@@ -501,7 +508,8 @@ fn restart_system() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        checksum_path, curtin_config, has_stable_id_shape, is_valid_hostname, is_valid_username,
+        block_map_path, checksum_path, curtin_config, has_stable_id_shape, is_valid_hostname,
+        is_valid_username,
     };
     use dead_rose_system_types::InstallDisk;
     use std::path::Path;
@@ -537,7 +545,7 @@ mod tests {
     }
 
     #[test]
-    fn generates_curtin_dd_image_config() {
+    fn generates_curtin_bmap_image_config() {
         let disk = InstallDisk {
             device: "/dev/vda".into(),
             stable_id: "/dev/disk/by-id/virtio-test".into(),
@@ -545,17 +553,19 @@ mod tests {
             size_bytes: 40 * 1024 * 1024 * 1024,
             removable: false,
         };
-        let config = curtin_config(&disk, Path::new("/payload/dead-rose.raw.zst")).unwrap();
-        assert!(config.contains("type: dd-zst"));
-        assert!(config.contains("uri: \"file:///payload/dead-rose.raw.zst\""));
+        let config = curtin_config(&disk, Path::new("/payload/dead-rose.raw")).unwrap();
+        assert!(config.contains("type: dd-bmap"));
+        assert!(config.contains("uri: \"file:///payload/dead-rose.raw\""));
         assert!(config.contains("\"/dev/disk/by-id/virtio-test\""));
     }
 
     #[test]
-    fn keeps_the_payload_suffix_in_the_checksum_path() {
+    fn derives_block_map_and_checksum_paths() {
+        let block_map = block_map_path(Path::new("/payload/dead-rose.raw"));
+        assert_eq!(block_map, Path::new("/payload/dead-rose.raw.bmap"));
         assert_eq!(
-            checksum_path(Path::new("/payload/dead-rose.raw.zst")),
-            Path::new("/payload/dead-rose.raw.zst.sha256")
+            checksum_path(&block_map),
+            Path::new("/payload/dead-rose.raw.bmap.sha256")
         );
     }
 }

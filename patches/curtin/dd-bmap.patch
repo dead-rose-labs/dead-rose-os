@@ -1,25 +1,36 @@
 diff --git a/curtin/commands/block_meta.py b/curtin/commands/block_meta.py
-index 286f64f..e07ace6 100644
+index 286f64f..92a427d 100644
 --- a/curtin/commands/block_meta.py
 +++ b/curtin/commands/block_meta.py
 @@ -154,6 +154,7 @@ def write_image_to_disk(source, dev):
          'dd-bz2': '| bzcat',
          'dd-gz': '| zcat',
          'dd-xz': '| xzcat',
-+        'dd-zst': '| zstd --decompress --stdout',
++        'dd-bmap': '',
          'dd-raw': ''
      }
      uri = source['uri']
-@@ -168,5 +169,6 @@ def write_image_to_disk(source, dev):
-     util.subp(args=[
-         'sh', '-c',
+@@ -166,8 +167,14 @@ def write_image_to_disk(source, dev):
+     else:
+         fetch = 'wget "$1" --progress=dot:mega -O - '
+     (devname, devnode) = block.get_dev_name_entry(dev)
+-    util.subp(args=[
+-        'sh', '-c',
 -        fetch + extractor[source['type']] + ' | dd bs=4M of="$2"',
-+        'sparse=; test ! -e /usr/lib/dead-rose-tests/sparse-target || sparse=conv=sparse; ' +
-+        fetch + extractor[source['type']] + ' | dd bs=4M $sparse status=progress of="$2"',
-         '--', uri, devnode])
+-        '--', uri, devnode])
++    if source['type'] == 'dd-bmap':
++        if not source['uri'].startswith('file://'):
++            raise ValueError('dd-bmap requires a local file URI')
++        util.subp(args=['/usr/bin/bmaptool', 'copy', '--bmap', uri + '.bmap',
++                        uri, devnode])
++    else:
++        util.subp(args=[
++            'sh', '-c',
++            fetch + extractor[source['type']] + ' | dd bs=4M of="$2"',
++            '--', uri, devnode])
      util.subp(['partprobe', devnode])
 diff --git a/curtin/util.py b/curtin/util.py
-index e1838de..3062f40 100644
+index e1838de..59e3f21 100644
 --- a/curtin/util.py
 +++ b/curtin/util.py
 @@ -1094,7 +1094,7 @@ def sanitize_source(source):
@@ -28,7 +39,7 @@ index e1838de..3062f40 100644
          return source
      supported = ['tgz', 'dd-tgz', 'tbz', 'dd-tbz', 'txz', 'dd-txz', 'dd-tar',
 -                 'dd-bz2', 'dd-gz', 'dd-xz', 'dd-raw', 'fsimage',
-+                 'dd-bz2', 'dd-gz', 'dd-xz', 'dd-zst', 'dd-raw', 'fsimage',
++                 'dd-bz2', 'dd-gz', 'dd-xz', 'dd-bmap', 'dd-raw', 'fsimage',
                   'fsimage-layered']
      deftype = 'tgz'
      for i in supported:

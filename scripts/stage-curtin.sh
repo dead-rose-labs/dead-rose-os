@@ -8,7 +8,7 @@ curtin_sha256="4f6e28c53c4a780db0d02873628ca0897b9099fac0507b2a793620b2d1c55177"
 archive="$project_dir/build/curtin-${curtin_commit}.tar.gz"
 source_dir="$project_dir/build/curtin-${curtin_commit}"
 url="https://github.com/canonical/curtin/archive/${curtin_commit}.tar.gz"
-curtin_patch="$project_dir/patches/curtin/dd-zstd.patch"
+curtin_patch="$project_dir/patches/curtin/dd-bmap.patch"
 
 archive_is_valid() {
   [[ -f "$archive" ]] && [[ "$(sha256sum "$archive" | awk '{print $1}')" == "$curtin_sha256" ]]
@@ -33,8 +33,9 @@ find "$source_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || t
 mkdir -p "$source_dir"
 tar --extract --gzip --file "$archive" --strip-components=1 --directory "$source_dir"
 patch --batch --forward --strip=1 --directory="$source_dir" < "$curtin_patch"
-grep -Fq "'dd-zst': '| zstd --decompress --stdout'" "$source_dir/curtin/commands/block_meta.py"
-grep -Fq "'dd-zst'" "$source_dir/curtin/util.py"
+grep -Fq "'dd-bmap': ''" "$source_dir/curtin/commands/block_meta.py"
+grep -Fq "'/usr/bin/bmaptool', 'copy'" "$source_dir/curtin/commands/block_meta.py"
+grep -Fq "'dd-bmap'" "$source_dir/curtin/util.py"
 
 run_privileged() {
   if [[ -w "$destination" ]]; then

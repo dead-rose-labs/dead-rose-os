@@ -90,7 +90,9 @@ assert_shadow_policy() {
   echo "shadow policy OK: /etc/shadow and /etc/gshadow are root:shadow (0:42) 0640 in $root"
 }
 
-[[ -f "$raw" ]] || "$project_dir/scripts/build-os.sh"
+if [[ ! -f "$raw" || ! -f "$raw.bmap" || ! -f "$raw.bmap.sha256" ]]; then
+  "$project_dir/scripts/build-os.sh"
+fi
 for generated in "$installer_root" "$iso_root" "$project_dir/build/efi"; do
   case "$generated" in
     "$project_dir"/build/*) ;;
@@ -113,8 +115,8 @@ require_regular_file "$project_dir/target/release/dead-rose-session" "kiosk sess
 require_regular_file "$project_dir/os/systemd/dead-rose-installer-backend.service" "installer backend unit"
 require_regular_file "$project_dir/os/greetd/installer.toml" "installer greetd config"
 require_regular_file "$project_dir/os/pam/greetd" "greetd PAM policy"
-require_regular_file "$raw.zst" "compressed OS image"
-require_regular_file "$raw.zst.sha256" "compressed OS image checksum"
+require_regular_file "$raw.bmap" "OS image block map"
+require_regular_file "$raw.bmap.sha256" "OS image block-map checksum"
 sudo mkosi --directory "$project_dir/os/installer" build 2>&1 | tee "$project_dir/build/logs/mkosi-installer.log"
 
 # Stage the installer payload without re-owning the tree: mksquashfs must
@@ -164,12 +166,15 @@ sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.script" "$inst
 sudo install -Dm644 "$project_dir/assets/brand/dead-rose-os-logo.png" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose-os-logo.png"
 "$project_dir/scripts/stage-curtin.sh" "$installer_root"
 sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc/systemd/system/graphical.target.wants" "$installer_root/etc/systemd/system/multi-user.target.wants" "$installer_root/usr/share/plymouth/themes"
-# Keep the payload compressed in the live image. The backend verifies the
-# compact artifact and Curtin streams its decompressed bytes directly to the
-# target instead of reading a nominal 25 GiB sparse file twice under QEMU.
-embedded_payload="$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw.zst"
-sudo install -m0644 "$raw.zst" "$embedded_payload"
-sudo install -m0644 "$raw.zst.sha256" "$embedded_payload.sha256"
+# Preserve the RAW image holes in the source tree. SquashFS compresses the
+# payload in the ISO while keeping it seekable at runtime, allowing bmaptool to
+# read and verify only allocated ranges instead of expanding the nominal disk.
+embedded_payload="$installer_root/usr/lib/dead-rose-installer/dead-rose-os.raw"
+sudo cp --sparse=always -- "$raw" "$embedded_payload"
+sudo chown 0:0 "$embedded_payload"
+sudo chmod 0644 "$embedded_payload"
+sudo install -m0644 "$raw.bmap" "$embedded_payload.bmap"
+sudo install -m0644 "$raw.bmap.sha256" "$embedded_payload.bmap.sha256"
 sudo ln -sf /usr/lib/systemd/system/greetd.service "$installer_root/etc/systemd/system/graphical.target.wants/greetd.service"
 sudo ln -sf /usr/lib/systemd/system/dead-rose-installer-backend.service "$installer_root/etc/systemd/system/multi-user.target.wants/dead-rose-installer-backend.service"
 sudo ln -sf /usr/lib/systemd/system/graphical.target "$installer_root/etc/systemd/system/default.target"
@@ -178,7 +183,6 @@ if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then
   sudo install -Dm755 "$project_dir/tests/boot/assets/session-ready" "$installer_root/usr/lib/dead-rose-tests/session-ready"
   sudo install -Dm755 "$project_dir/tests/boot/assets/install-driver.py" "$installer_root/usr/lib/dead-rose-tests/install-driver.py"
   sudo install -Dm755 "$project_dir/tests/boot/assets/smoke-diagnostics" "$installer_root/usr/lib/dead-rose-tests/smoke-diagnostics"
-  sudo install -Dm644 "$project_dir/tests/boot/assets/sparse-target" "$installer_root/usr/lib/dead-rose-tests/sparse-target"
   sudo install -Dm644 "$project_dir/tests/boot/assets/backend-console.conf" "$installer_root/etc/systemd/system/dead-rose-installer-backend.service.d/test-console.conf"
   sudo install -Dm644 "$project_dir/tests/boot/assets/installer-session-ready.service" "$installer_root/usr/lib/systemd/system/installer-session-ready.service"
   sudo install -Dm644 "$project_dir/tests/boot/assets/install-driver.service" "$installer_root/usr/lib/systemd/system/install-driver.service"
