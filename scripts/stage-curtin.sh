@@ -35,6 +35,7 @@ tar --extract --gzip --file "$archive" --strip-components=1 --directory "$source
 patch --batch --forward --strip=1 --directory="$source_dir" < "$curtin_patch"
 grep -Fq "'dd-bmap': ''" "$source_dir/curtin/commands/block_meta.py"
 grep -Fq "'/usr/bin/bmaptool', 'copy'" "$source_dir/curtin/commands/block_meta.py"
+grep -Fq "'sgdisk', '--move-second-header'" "$source_dir/curtin/commands/block_meta.py"
 grep -Fq "'dd-bmap'" "$source_dir/curtin/util.py"
 
 run_privileged() {

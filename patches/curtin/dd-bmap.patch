@@ -10,7 +10,7 @@ index 286f64f..92a427d 100644
          'dd-raw': ''
      }
      uri = source['uri']
-@@ -166,8 +167,14 @@ def write_image_to_disk(source, dev):
+@@ -166,8 +167,15 @@ def write_image_to_disk(source, dev):
      else:
          fetch = 'wget "$1" --progress=dot:mega -O - '
      (devname, devnode) = block.get_dev_name_entry(dev)
@@ -23,6 +23,7 @@ index 286f64f..92a427d 100644
 +            raise ValueError('dd-bmap requires a local file URI')
 +        util.subp(args=['/usr/bin/bmaptool', 'copy', '--bmap', uri + '.bmap',
 +                        uri, devnode])
++        util.subp(args=['sgdisk', '--move-second-header', devnode])
 +    else:
 +        util.subp(args=[
 +            'sh', '-c',

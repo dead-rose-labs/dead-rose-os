@@ -29,6 +29,9 @@ install -Dm644 os/grub/99-dead-rose.cfg "$staging/etc/default/grub.d/99-dead-ros
 install -Dm644 os/plymouth/dead-rose/dead-rose.plymouth "$staging/usr/share/plymouth/themes/dead-rose/dead-rose.plymouth"
 install -Dm644 os/plymouth/dead-rose/dead-rose.script "$staging/usr/share/plymouth/themes/dead-rose/dead-rose.script"
 install -Dm644 assets/brand/dead-rose-os-logo.png "$staging/usr/share/plymouth/themes/dead-rose/dead-rose-os-logo.png"
+# Curtin's mature DD-image flow locates the root partition by this directory
+# after writing the image. It is inert in the installed runtime.
+install -d -m0755 "$staging/curtin"
 mkdir -p "$staging/etc/systemd/system/graphical.target.wants" "$staging/etc/systemd/system/multi-user.target.wants" "$staging/etc/systemd/system/local-fs.target.wants" "$staging/usr/share/plymouth/themes"
 ln -sf /usr/lib/systemd/system/greetd.service "$staging/etc/systemd/system/graphical.target.wants/greetd.service"
 ln -sf /usr/lib/systemd/system/dead-rose-core.service "$staging/etc/systemd/system/multi-user.target.wants/dead-rose-core.service"
