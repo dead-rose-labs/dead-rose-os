@@ -27,10 +27,12 @@ fn main() {
     });
     validate_application(&application).unwrap_or_else(|message| fail(&message));
 
+    let force_software_rendering = env::var_os("DEAD_ROSE_SOFTWARE_RENDERING").is_some();
     let mut failures = VecDeque::new();
     loop {
         let started = Instant::now();
-        let status = start_cage(&application).unwrap_or_else(|error| {
+        let software_rendering = force_software_rendering || !failures.is_empty();
+        let status = start_cage(&application, software_rendering).unwrap_or_else(|error| {
             error!(%error, "Cage failed to start");
             synthetic_failure()
         });
@@ -91,14 +93,18 @@ fn validate_application(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn start_cage(application: &Path) -> std::io::Result<ExitStatus> {
+fn start_cage(application: &Path, software_rendering: bool) -> std::io::Result<ExitStatus> {
     let mut command = Command::new("/usr/bin/cage");
     command.args(["-s", "--"]).arg(application);
     command.env("WLR_LIBINPUT_NO_DEVICES", "1");
-    command.stdout(Stdio::piped()).stderr(Stdio::piped());
-    if env::var_os("DEAD_ROSE_SOFTWARE_RENDERING").is_some() {
-        command.env("LIBGL_ALWAYS_SOFTWARE", "1");
+    if software_rendering {
+        command
+            .env("LIBGL_ALWAYS_SOFTWARE", "1")
+            .env("WLR_RENDERER", "pixman")
+            .env("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        info!("using the software Cage renderer");
     }
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
     info!(application = %application.display(), "starting Cage session");
     let mut child = command.spawn()?;
     let stdout = child

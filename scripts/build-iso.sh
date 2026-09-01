@@ -135,6 +135,9 @@ for binary in dead-rose-installer dead-rose-installer-agent dead-rose-session; d
   fi
 done
 sudo install -Dm644 "$project_dir/os/systemd/dead-rose-installer-backend.service" "$installer_root/usr/lib/systemd/system/dead-rose-installer-backend.service"
+sudo install -Dm644 "$project_dir/os/systemd/dead-rose-graphical-diagnostics.service" "$installer_root/usr/lib/systemd/system/dead-rose-graphical-diagnostics.service"
+sudo install -Dm644 "$project_dir/os/systemd/dead-rose-graphical-diagnostics.timer" "$installer_root/usr/lib/systemd/system/dead-rose-graphical-diagnostics.timer"
+sudo install -Dm755 "$project_dir/os/diagnostics/graphical-session-check" "$installer_root/usr/lib/dead-rose/graphical-session-check"
 sudo install -Dm644 "$project_dir/os/systemd/greetd-installer.conf" "$installer_root/etc/systemd/system/greetd.service.d/dead-rose.conf"
 sudo install -Dm644 "$project_dir/os/greetd/installer.toml" "$installer_root/etc/greetd/config.toml"
 sudo install -Dm644 "$project_dir/os/pam/greetd" "$installer_root/etc/pam.d/greetd"
@@ -169,7 +172,7 @@ sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.plymouth" "$in
 sudo install -Dm644 "$project_dir/os/plymouth/dead-rose/dead-rose.script" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose.script"
 sudo install -Dm644 "$project_dir/assets/brand/dead-rose-os-logo.png" "$installer_root/usr/share/plymouth/themes/dead-rose/dead-rose-os-logo.png"
 "$project_dir/scripts/stage-curtin.sh" "$installer_root"
-sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc/systemd/system/graphical.target.wants" "$installer_root/etc/systemd/system/multi-user.target.wants" "$installer_root/usr/share/plymouth/themes"
+sudo mkdir -p "$installer_root/usr/lib/dead-rose-installer" "$installer_root/etc/systemd/system/graphical.target.wants" "$installer_root/etc/systemd/system/multi-user.target.wants" "$installer_root/etc/systemd/system/timers.target.wants" "$installer_root/usr/share/plymouth/themes"
 # Curtin extracts this verified Ubuntu root filesystem into the ordinary ext4
 # ROOT partition it creates on the selected disk.
 embedded_payload="$installer_root/usr/lib/dead-rose-installer/dead-rose-os.rootfs.tar.gz"
@@ -177,6 +180,7 @@ sudo install -m0644 "$payload" "$embedded_payload"
 sudo install -m0644 "$payload.sha256" "$embedded_payload.sha256"
 sudo ln -sf /usr/lib/systemd/system/greetd.service "$installer_root/etc/systemd/system/graphical.target.wants/greetd.service"
 sudo ln -sf /usr/lib/systemd/system/dead-rose-installer-backend.service "$installer_root/etc/systemd/system/multi-user.target.wants/dead-rose-installer-backend.service"
+sudo ln -sf /usr/lib/systemd/system/dead-rose-graphical-diagnostics.timer "$installer_root/etc/systemd/system/timers.target.wants/dead-rose-graphical-diagnostics.timer"
 sudo ln -sf /usr/lib/systemd/system/graphical.target "$installer_root/etc/systemd/system/default.target"
 sudo ln -sf /usr/share/plymouth/themes/dead-rose/dead-rose.plymouth "$installer_root/usr/share/plymouth/themes/default.plymouth"
 if [[ "${DEAD_ROSE_TEST_MARKERS:-0}" == "1" ]]; then

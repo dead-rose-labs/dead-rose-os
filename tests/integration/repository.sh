@@ -11,6 +11,9 @@ required=(
   os/systemd/greetd-installed.conf os/systemd/greetd-installer.conf
   os/systemd/dead-rose-core.service os/systemd/dead-rose-installer-backend.service
   os/systemd/dead-rose-state-init.service
+  os/systemd/dead-rose-graphical-diagnostics.service
+  os/systemd/dead-rose-graphical-diagnostics.timer
+  os/diagnostics/graphical-session-check
   os/grub/99-dead-rose.cfg os/installer/grub.cfg
   crates/session/src/main.rs crates/installer-agent/src/main.rs
   docs/architecture/rebuild-audit.md docs/architecture/os-runtime.md docs/build.md docs/debug.md
@@ -118,6 +121,12 @@ rg -q 'installation_in_progress' "$project_dir/crates/installer-agent/src/main.r
 rg -q 'repair_state_ownership' "$project_dir/crates/session/src/bin/dead-rose-state-init.rs"
 rg -q 'tracing_journald::layer' "$project_dir/crates/session/src/main.rs"
 rg -q 'relay_output\("cage stderr"' "$project_dir/crates/session/src/main.rs"
+rg -q 'env\("WLR_RENDERER", "pixman"\)' "$project_dir/crates/session/src/main.rs"
+rg -q '^log_directory=/var/log/dead-rose$' "$project_dir/os/diagnostics/graphical-session-check"
+rg -q 'graphical-boot.log' "$project_dir/os/diagnostics/graphical-session-check"
+rg -q 'dead-rose-graphical-diagnostics.timer.*timers.target.wants' "$project_dir/scripts/build-os.sh"
+rg -q 'dead-rose-graphical-diagnostics.timer.*timers.target.wants' "$project_dir/scripts/build-iso.sh"
+rg -q 'systemd.debug_shell=1' "$project_dir/os/installer/grub.cfg"
 rg -q 'journalctl .*_UID=' "$project_dir/tests/boot/assets/smoke-diagnostics"
 
 rg -q '^ID=deadrose$' "$project_dir/os/mkosi.extra/etc/os-release"

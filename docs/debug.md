@@ -4,6 +4,15 @@
 
 Press Escape while GRUB starts to reveal the menu. The installed image exposes its normal entry and GRUB-generated recovery entry. The installer ISO provides normal, verbose and debug entries; debug boots to a multi-user target with increased kernel and systemd logging instead of hiding status output.
 
+The installer debug entry also enables systemd's root debug shell on tty9. In
+VirtualBox, switch to it with Host+F9 (the default Host key on Windows is Right
+Ctrl). This shell exists only after explicitly selecting the debug GRUB entry;
+normal boot continues directly to the Dead Rose interface without a tty1 login.
+
+If the graphical session is not healthy 90 seconds after boot, Dead Rose writes
+targeted greetd, Cage, application, DRM and user-session diagnostics to
+`/var/log/dead-rose/graphical-boot.log` and mirrors the report to the console.
+
 Use a recovery or debug path for diagnosis. A successful normal boot stays quiet and does not expose a shell.
 
 ## Session checks

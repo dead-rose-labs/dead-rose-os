@@ -1,0 +1,50 @@
+#!/usr/bin/bash
+set -u
+
+if [[ -x /usr/lib/dead-rose/dead-rose-installer ]]; then
+  profile=installer
+  application=/usr/lib/dead-rose/dead-rose-installer
+  identity=deadrose-installer
+else
+  profile=installed
+  application=/usr/lib/dead-rose/dead-rose-shell
+  identity=deadrose-ui
+fi
+
+application_pid=""
+for process in /proc/[0-9]*; do
+  if [[ "$(readlink -f "$process/exe" 2>/dev/null || true)" == "$application" ]]; then
+    application_pid="${process##*/}"
+    break
+  fi
+done
+
+if systemctl is-active --quiet greetd.service \
+  && pgrep -x cage >/dev/null \
+  && [[ -n "$application_pid" ]] \
+  && [[ "$(stat -c %U "/proc/$application_pid" 2>/dev/null || true)" == "$identity" ]]; then
+  exit 0
+fi
+
+log_directory=/var/log/dead-rose
+log="$log_directory/graphical-boot.log"
+install -d -m0750 -o root -g root "$log_directory"
+{
+  echo "DEAD_ROSE_GRAPHICAL_DIAGNOSTICS_BEGIN profile=$profile"
+  echo "greetd=$(systemctl is-active greetd.service 2>/dev/null || true)"
+  echo "expected_identity=$identity uid=$(id -u "$identity" 2>/dev/null || echo missing)"
+  echo "application_pid=${application_pid:-missing}"
+  systemctl --failed --no-pager || true
+  systemctl status greetd.service --no-pager || true
+  loginctl list-sessions --no-pager || true
+  ps -eo user,pid,ppid,args | grep -E 'greetd|cage|dead-rose' || true
+  journalctl -b --no-pager -n 600 \
+    -u greetd.service \
+    -u dead-rose-installer-backend.service \
+    -u dead-rose-core.service || true
+  journalctl -b --no-pager -n 400 "_UID=$(id -u "$identity" 2>/dev/null || echo 0)" || true
+  dmesg | grep -Ei 'drm|vmwgfx|virtio_gpu|vbox|gpu|egl' | tail -n 300 || true
+  echo "DEAD_ROSE_GRAPHICAL_DIAGNOSTICS_END"
+} >"$log" 2>&1
+chmod 0640 "$log"
+cat "$log"
