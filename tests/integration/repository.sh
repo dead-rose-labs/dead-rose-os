@@ -46,6 +46,7 @@ rg -q '^[[:space:]]+apt$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+lsb-release$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+grub-efi-amd64-signed$' "$project_dir/os/mkosi.conf"
 rg -q '^[[:space:]]+shim-signed$' "$project_dir/os/mkosi.conf"
+rg -q '^[[:space:]]+e2fsprogs$' "$project_dir/os/mkosi.conf"
 if rg -q '^[[:space:]]+curtin$' "$project_dir/os/installer/mkosi.conf"; then
   echo "Ubuntu 26.04 does not ship a curtin binary package; use the pinned source runtime" >&2
   exit 1
@@ -118,7 +119,9 @@ rg -q 'relay_output\("cage stderr"' "$project_dir/crates/session/src/main.rs"
 rg -q 'journalctl .*_UID=' "$project_dir/tests/boot/assets/smoke-diagnostics"
 
 rg -q '^ID=deadrose$' "$project_dir/os/mkosi.extra/etc/os-release"
+rg -q '^ID_LIKE="ubuntu debian"$' "$project_dir/os/mkosi.extra/etc/os-release"
 rg -q '^UBUNTU_CODENAME=resolute$' "$project_dir/os/mkosi.extra/etc/os-release"
+bash -n "$project_dir/os/mkosi.extra/etc/os-release"
 [[ "$(rg -o 'systemd\.firstboot=no' "$project_dir/os/installer/grub.cfg" | wc -l | tr -d ' ')" == 3 ]]
 rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/grub.cfg"
 

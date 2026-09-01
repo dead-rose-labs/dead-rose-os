@@ -1,7 +1,7 @@
 NAME="Dead Rose OS"
 PRETTY_NAME="Dead Rose OS 0.1.0"
 ID=deadrose
-ID_LIKE=ubuntu debian
+ID_LIKE="ubuntu debian"
 VERSION_ID="0.1.0"
 VERSION="0.1.0 (Foundation)"
 VERSION_CODENAME=foundation
