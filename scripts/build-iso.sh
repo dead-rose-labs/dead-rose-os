@@ -266,6 +266,7 @@ grub-mkstandalone \
   "/boot/grub/grub.cfg=$project_dir/os/installer/grub-bootstrap.cfg"
 echo "EFI bootloader: $efi_binary"
 require_regular_file "$efi_binary" "EFI bootloader"
+sudo install -Dm644 "$efi_binary" "$iso_root/EFI/BOOT/BOOTX64.EFI"
 truncate -s 64M "$efi_image"
 mkfs.vfat -F 32 -n DEADROSEEFI "$efi_image"
 mcopy -s -i "$efi_image" "$efi_root/EFI" ::/

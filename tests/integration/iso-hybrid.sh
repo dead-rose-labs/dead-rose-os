@@ -49,15 +49,21 @@ backup_gpt_signature="$(dd if="$iso" bs=1 skip=$((iso_size - 512)) count=8 statu
 [[ "$gpt_signature" == "EFI PART" ]] || fail "primary GPT header is missing"
 [[ "$backup_gpt_signature" == "EFI PART" ]] || fail "backup GPT header is missing"
 
-xorriso -indev "$iso" -extract_boot_images "$runtime_dir/boot-images" >/dev/null 2>&1 \
-  || fail "could not extract boot and partition images"
-efi_partition="$(find "$runtime_dir/boot-images" -maxdepth 1 -type f -name 'gpt_part*_efi.img' -print -quit)"
-[[ -n "$efi_partition" && -s "$efi_partition" ]] || fail "xorriso did not extract a GPT EFI System Partition"
+efi_extent="$(awk '$(NF - 1) == "EFI" && $NF == "System" { print $2, $4; exit }' "$fdisk_report")"
+[[ -n "$efi_extent" ]] || fail "could not locate the EFI System Partition extents"
+read -r efi_start efi_sectors <<<"$efi_extent"
+[[ "$efi_start" =~ ^[0-9]+$ && "$efi_sectors" =~ ^[0-9]+$ ]] \
+  || fail "could not locate the EFI System Partition extents"
+efi_partition="$runtime_dir/efi-system-partition.img"
+dd if="$iso" of="$efi_partition" bs=512 skip="$efi_start" count="$efi_sectors" status=none \
+  || fail "could not extract the EFI System Partition by its GPT extents"
+[[ -s "$efi_partition" ]] || fail "extracted EFI System Partition is empty"
 mdir -i "$efi_partition" ::/EFI/BOOT/BOOTX64.EFI >/dev/null \
   || fail "appended EFI System Partition does not contain EFI/BOOT/BOOTX64.EFI"
 
-listing="$(xorriso -indev "$iso" -find /live -maxdepth 1 2>&1)" || fail "could not inspect live boot files"
+listing="$(xorriso -indev "$iso" -find / -maxdepth 3 2>&1)" || fail "could not inspect ISO boot files"
 grep -Fq '/live/vmlinuz' <<<"$listing" || fail "kernel is missing from the ISO filesystem"
 grep -Fq '/live/initrd' <<<"$listing" || fail "initrd is missing from the ISO filesystem"
+grep -Fq '/EFI/BOOT/BOOTX64.EFI' <<<"$listing" || fail "ISO9660 fallback EFI/BOOT/BOOTX64.EFI is missing"
 
 echo "hybrid ISO check: OK - ISO9660, UEFI El Torito, protective MBR, GPT and appended ESP are valid"

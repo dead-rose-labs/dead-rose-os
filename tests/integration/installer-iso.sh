@@ -16,7 +16,7 @@ command -v mdir >/dev/null 2>&1 || fail "mdir is required"
 command -v unsquashfs >/dev/null 2>&1 || fail "unsquashfs is required"
 
 listing="$(xorriso -indev "$iso" -find / -maxdepth 3 2>&1)" || fail "could not list ISO contents"
-for path in /live/vmlinuz /live/initrd /live/rootfs.squashfs /boot/grub/grub.cfg; do
+for path in /live/vmlinuz /live/initrd /live/rootfs.squashfs /boot/grub/grub.cfg /EFI/BOOT/BOOTX64.EFI; do
   grep -Fq "$path" <<<"$listing" || fail "ISO is missing $path"
 done
 
