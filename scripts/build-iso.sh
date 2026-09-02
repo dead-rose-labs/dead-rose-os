@@ -251,18 +251,35 @@ sudo install -m0644 "$installer_kernel" "$iso_live/vmlinuz"
 sudo install -m0644 "$installer_initrd" "$iso_live/initrd"
 sudo dd if="$initrd_overlay" of="$iso_live/initrd" oflag=append conv=notrunc status=none
 
-efi_dir="$project_dir/build/efi/EFI/BOOT"
+efi_root="$project_dir/build/efi"
+efi_dir="$efi_root/EFI/BOOT"
 efi_binary="$efi_dir/BOOTX64.EFI"
+efi_image="$efi_root/efiboot.img"
 mkdir -p "$efi_dir"
 require_regular_file "$project_dir/os/installer/grub.cfg" "installer grub config"
 require_regular_file "$project_dir/os/installer/grub-bootstrap.cfg" "embedded GRUB bootstrap config"
 install -Dm644 "$project_dir/os/installer/grub.cfg" "$iso_root/boot/grub/grub.cfg"
-grub-mkstandalone -O x86_64-efi -o "$efi_binary" "/boot/grub/grub.cfg=$project_dir/os/installer/grub-bootstrap.cfg"
+grub-mkstandalone \
+  -O x86_64-efi \
+  --modules="part_gpt part_msdos fat iso9660 search search_label configfile normal linux" \
+  -o "$efi_binary" \
+  "/boot/grub/grub.cfg=$project_dir/os/installer/grub-bootstrap.cfg"
 echo "EFI bootloader: $efi_binary"
 require_regular_file "$efi_binary" "EFI bootloader"
-truncate -s 8M "$iso_root/efiboot.img"
-mkfs.vfat "$iso_root/efiboot.img"
-mcopy -s -i "$iso_root/efiboot.img" "$project_dir/build/efi/EFI" ::/
-xorriso -as mkisofs -r -V DEAD_ROSE_INSTALLER -o "$iso" -J -joliet-long -e efiboot.img -no-emul-boot -isohybrid-gpt-basdat "$iso_root" 2>&1 | tee "$project_dir/build/logs/xorriso.log"
+truncate -s 64M "$efi_image"
+mkfs.vfat -F 32 -n DEADROSEEFI "$efi_image"
+mcopy -s -i "$efi_image" "$efi_root/EFI" ::/
+
+# Use one appended FAT32 ESP for both UEFI boot paths. El Torito exposes it to
+# optical firmware, while the valid GPT and its protective MBR expose the same
+# partition when the ISO is written byte-for-byte to a USB mass-storage device.
+xorriso -as mkisofs \
+  -r -V DEAD_ROSE_INSTALLER -o "$iso" -J -joliet-long \
+  -partition_offset 16 \
+  -append_partition 2 0xef "$efi_image" \
+  -appended_part_as_gpt \
+  -e --interval:appended_partition_2:all:: -no-emul-boot \
+  "$iso_root" 2>&1 | tee "$project_dir/build/logs/xorriso.log"
 sudo "$project_dir/tests/integration/installer-iso.sh" "$iso" "$iso_root" "$installer_root"
+"$project_dir/tests/integration/iso-hybrid.sh" "$iso"
 sha256sum "$iso" > "$iso.sha256"

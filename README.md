@@ -19,6 +19,8 @@ macOS and other hosts can run frontend and portable Rust checks, but they are no
 ./dr iso             # build the branded installer ISO and digest
 ./dr vm              # boot the installed image in QEMU
 ./dr installer-vm    # boot the ISO with a disposable 48 GiB target
+./dr installer-vm --smoke-cd   # verify UEFI optical boot to installer readiness
+./dr installer-vm --smoke-usb  # verify byte-for-byte raw USB boot to installer readiness
 ./dr test            # frontend, Rust and repository tests
 ./dr clean           # remove generated files under build/
 ```
@@ -34,7 +36,7 @@ dead-rose-os-0.1.0-amd64.iso.sha256
 logs/
 ```
 
-Curtin creates the installed GPT layout with a 512 MiB FAT32 `EFI` partition and one ext4 `ROOT` partition using the remaining disk. Mutable Dead Rose state is an ordinary directory at `/var/lib/dead-rose` inside `ROOT`. Ubuntu supplies the kernel, init system, bootloader, authentication/session infrastructure and package management.
+The installer ISO is hybrid: El Torito supports virtual or physical optical boot, while its protective MBR, GPT and appended FAT32 EFI System Partition support writing the same artifact directly to USB. Curtin creates the installed GPT layout with a 512 MiB FAT32 `EFI` partition and one ext4 `ROOT` partition using the remaining disk. Mutable Dead Rose state is an ordinary directory at `/var/lib/dead-rose` inside `ROOT`. Ubuntu supplies the kernel, init system, bootloader, authentication/session infrastructure and package management.
 
 ## Runtime, installation and recovery
 

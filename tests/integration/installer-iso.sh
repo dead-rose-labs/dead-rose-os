@@ -16,7 +16,7 @@ command -v mdir >/dev/null 2>&1 || fail "mdir is required"
 command -v unsquashfs >/dev/null 2>&1 || fail "unsquashfs is required"
 
 listing="$(xorriso -indev "$iso" -find / -maxdepth 3 2>&1)" || fail "could not list ISO contents"
-for path in /live/vmlinuz /live/initrd /live/rootfs.squashfs /efiboot.img /boot/grub/grub.cfg; do
+for path in /live/vmlinuz /live/initrd /live/rootfs.squashfs /boot/grub/grub.cfg; do
   grep -Fq "$path" <<<"$listing" || fail "ISO is missing $path"
 done
 
@@ -26,7 +26,7 @@ pvd="$(xorriso -indev "$iso" -pvd_info 2>&1)" || fail "could not read ISO volume
 # the optional quotes instead of depending on one presentation format.
 grep -Eq "^[[:space:]]*Volume [Ii]d[[:space:]]*:[[:space:]]*'?DEAD_ROSE_INSTALLER'?[[:space:]]*$" <<<"$pvd" || fail "ISO volume label is not DEAD_ROSE_INSTALLER"
 
-efi_image="$iso_root/efiboot.img"
+efi_image="$(dirname "$iso_root")/efi/efiboot.img"
 [[ -s "$efi_image" ]] || fail "EFI boot image is missing or empty"
 mdir -i "$efi_image" ::/EFI/BOOT/BOOTX64.EFI >/dev/null || fail "EFI image does not contain BOOTX64.EFI"
 

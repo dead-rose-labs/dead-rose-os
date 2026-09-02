@@ -47,7 +47,18 @@ jobs:
           set -euo pipefail
           DEAD_ROSE_TEST_MARKERS=1 ./dr iso 2>&1 | tee build/logs/build-iso-full.log
 
-      - name: Smoke-test installer boot
+      - name: Validate hybrid ISO structure
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          ./tests/integration/iso-hybrid.sh "build/dead-rose-os-${version}-amd64.iso"
+
+      - name: Smoke-test installer as virtual CD/DVD
+        run: ./dr installer-vm --smoke-cd
+
+      - name: Smoke-test installer as raw USB
+        run: ./dr installer-vm --smoke-usb
+
+      - name: Smoke-test installation and installed boot
         run: ./dr installer-vm --smoke
 
       - name: Report installer smoke markers
@@ -55,6 +66,8 @@ jobs:
         run: |
           set -euo pipefail
           installer_log="build/logs/boot/installer-serial.log"
+          cdrom_log="build/logs/boot/installer-cdrom-serial.log"
+          usb_log="build/logs/boot/installer-usb-serial.log"
           installed_log="build/logs/boot/installed-serial.log"
           marker_state() {
             local marker="$1"
@@ -74,16 +87,20 @@ jobs:
           process_states="$(rg -o 'DEAD_ROSE_PROCESS_STATE (session|cage|installer|backend) (yes|no)' "$installer_log" 2>/dev/null | sed 's/^DEAD_ROSE_PROCESS_STATE //' | sort -u | paste -sd, - || true)"
           process_states="${process_states:-none}"
           grub_ready="$(marker_state DEAD_ROSE_GRUB_READY "$installer_log")"
+          cdrom_ready="$(marker_state DEAD_ROSE_INSTALLER_UI_READY "$cdrom_log")"
+          usb_ready="$(marker_state DEAD_ROSE_INSTALLER_UI_READY "$usb_log")"
           initrd_ready="$(marker_state DEAD_ROSE_INITRD_READY "$installer_log")"
           live_root_ready="$(marker_state DEAD_ROSE_LIVE_ROOT_READY "$installer_log")"
           ui_ready="$(marker_state DEAD_ROSE_INSTALLER_UI_READY "$installer_log")"
           install_complete="$(marker_state DEAD_ROSE_INSTALL_COMPLETE "$installer_log")"
           shell_ready="$(marker_state DEAD_ROSE_SHELL_READY "$installed_log")"
-          summary="GRUB: $grub_ready; initrd: $initrd_ready; live root: $live_root_ready; UI: $ui_ready; install complete: $install_complete; installed shell: $shell_ready; last phase: $last_phase; failed units: $failed_units; unit states: $unit_states; processes: $process_states"
+          summary="CD boot: $cdrom_ready; raw USB boot: $usb_ready; GRUB: $grub_ready; initrd: $initrd_ready; live root: $live_root_ready; UI: $ui_ready; install complete: $install_complete; installed shell: $shell_ready; last phase: $last_phase; failed units: $failed_units; unit states: $unit_states; processes: $process_states"
           echo "::notice title=Dead Rose installer smoke::$summary"
           {
             echo "## Installer smoke"
             echo
+            echo "- Virtual CD/DVD boot ready: $cdrom_ready"
+            echo "- Raw USB boot ready: $usb_ready"
             echo "- GRUB reached: $grub_ready"
             echo "- Initrd reached: $initrd_ready"
             echo "- Live root ready: $live_root_ready"

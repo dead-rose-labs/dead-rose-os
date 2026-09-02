@@ -35,4 +35,6 @@ Ubuntu 26.04 does not publish Curtin as a binary archive package. The live-image
 
 `os/mkosi.conf` builds the Ubuntu directory root used to produce the verified root-filesystem archive. `os/installer/mkosi.conf` builds the live root used by the custom UEFI installer ISO. Runtime files are staged under `build/`; the source `mkosi.extra` tree is not mutated during builds.
 
+The release ISO has two views over one boot path: UEFI optical firmware reaches the appended FAT32 ESP through El Torito, and UEFI USB firmware reaches that ESP through the image's GPT. A protective MBR identifies the GPT to disk-oriented tooling. The ESP contains the removable-media fallback executable `EFI/BOOT/BOOTX64.EFI`; its embedded GRUB config searches for the ISO9660 label before loading the shared external config, kernel and initrd.
+
 Boot-smoke marker services are included only when `DEAD_ROSE_TEST_MARKERS=1`. Release artifacts are rebuilt without those services.

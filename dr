@@ -25,7 +25,7 @@ case "$command" in
     echo "  ./dr build          Build the Ubuntu root filesystem payload"
     echo "  ./dr iso            Build the installer ISO"
     echo "  ./dr vm             Boot the installed VM target in QEMU"
-    echo "  ./dr installer-vm   Boot installer with a disposable target"
+    echo "  ./dr installer-vm   Boot installer; --smoke-cd/--smoke-usb validate both media paths"
     echo "  ./dr test           Run frontend, Rust and static tests"
     echo "  ./dr clean          Remove generated build artifacts"
     ;;

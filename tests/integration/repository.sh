@@ -17,7 +17,8 @@ required=(
   os/grub/99-dead-rose.cfg os/installer/grub.cfg
   crates/session/src/main.rs crates/installer-agent/src/main.rs
   docs/architecture/rebuild-audit.md docs/architecture/os-runtime.md docs/build.md docs/debug.md
-  tests/boot/smoke.sh tests/boot/installer-iso-smoke.sh
+  tests/boot/smoke.sh tests/boot/installer-iso-smoke.sh tests/boot/installer-media-smoke.sh
+  tests/integration/iso-hybrid.sh
 )
 for path in "${required[@]}"; do [[ -f "$project_dir/$path" ]] || { echo "Missing $path" >&2; exit 1; }; done
 
@@ -154,11 +155,24 @@ rg -q -- '--create --gzip' "$project_dir/scripts/build-os.sh"
 rg -q 'rmdir -- "\$output"' "$project_dir/scripts/build-os.sh"
 rg -q 'rmdir -- "\$generated"' "$project_dir/scripts/build-iso.sh"
 rg -q 'dead-rose-os.rootfs.tar.gz' "$project_dir/scripts/build-iso.sh"
+rg -q -- '-partition_offset 16' "$project_dir/scripts/build-iso.sh"
+rg -q -- '-append_partition 2 0xef' "$project_dir/scripts/build-iso.sh"
+rg -q -- '-appended_part_as_gpt' "$project_dir/scripts/build-iso.sh"
+rg -q -- '--interval:appended_partition_2:all::' "$project_dir/scripts/build-iso.sh"
+rg -q 'mkfs.vfat -F 32 -n DEADROSEEFI' "$project_dir/scripts/build-iso.sh"
+rg -q 'tests/integration/iso-hybrid.sh' "$project_dir/scripts/build-iso.sh"
+rg -q 'fdisk.*mkosi.*mdir.*xorriso' "$project_dir/scripts/bootstrap-builder.sh"
 rg -q 'stub-resolv\.conf.*installer_root/etc/resolv\.conf' "$project_dir/scripts/build-iso.sh"
 rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"
 rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_COMPLETE' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_SHELL_READY' "$project_dir/tests/boot/installer-iso-smoke.sh"
 rg -q 'DEAD_ROSE_INSTALL_TIMEOUT_SECONDS:-5400' "$project_dir/tests/boot/installer-iso-smoke.sh"
+rg -q 'usb-storage,drive=installer,bootindex=1' "$project_dir/tests/boot/installer-media-smoke.sh"
+rg -q 'DEAD_ROSE_INSTALLER_UI_READY' "$project_dir/tests/boot/installer-media-smoke.sh"
+rg -q -- '--smoke-cd' "$project_dir/scripts/run-installer-vm.sh"
+rg -q -- '--smoke-usb' "$project_dir/scripts/run-installer-vm.sh"
+rg -q 'Smoke-test installer as virtual CD/DVD' "$project_dir/.github/workflows/build-os.yml"
+rg -q 'Smoke-test installer as raw USB' "$project_dir/.github/workflows/build-os.yml"
 
 echo "Repository runtime invariants pass."

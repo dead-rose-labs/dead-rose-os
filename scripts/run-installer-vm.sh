@@ -8,8 +8,14 @@ target="$project_dir/build/installer-target.qcow2"
 if [[ "${1:-}" == "--smoke" ]]; then
   exec "$project_dir/tests/boot/installer-iso-smoke.sh" "$iso"
 fi
+if [[ "${1:-}" == "--smoke-cd" ]]; then
+  exec "$project_dir/tests/boot/installer-media-smoke.sh" "$iso" cdrom
+fi
+if [[ "${1:-}" == "--smoke-usb" ]]; then
+  exec "$project_dir/tests/boot/installer-media-smoke.sh" "$iso" usb
+fi
 if [[ "$#" -ne 0 ]]; then
-  echo "usage: ./dr installer-vm [--smoke]" >&2
+  echo "usage: ./dr installer-vm [--smoke|--smoke-cd|--smoke-usb]" >&2
   exit 2
 fi
 [[ -f "$target" ]] || qemu-img create -f qcow2 "$target" 48G
