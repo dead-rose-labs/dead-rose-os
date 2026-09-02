@@ -162,6 +162,7 @@ rg -q -- '--interval:appended_partition_2:all::' "$project_dir/scripts/build-iso
 rg -q 'mkfs.vfat -F 32 -n DEADROSEEFI' "$project_dir/scripts/build-iso.sh"
 rg -q 'iso_root/EFI/BOOT/BOOTX64.EFI' "$project_dir/scripts/build-iso.sh"
 rg -q 'tests/integration/iso-hybrid.sh' "$project_dir/scripts/build-iso.sh"
+rg -q '\$6 == "2"' "$project_dir/tests/integration/iso-hybrid.sh"
 rg -q 'fdisk.*mkosi.*mdir.*xorriso' "$project_dir/scripts/bootstrap-builder.sh"
 rg -q 'stub-resolv\.conf.*installer_root/etc/resolv\.conf' "$project_dir/scripts/build-iso.sh"
 rg -q '\[\[ -x .*dead-rose-installer' "$project_dir/tests/integration/installer-iso.sh"

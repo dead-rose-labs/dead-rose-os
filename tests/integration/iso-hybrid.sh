@@ -49,7 +49,12 @@ backup_gpt_signature="$(dd if="$iso" bs=1 skip=$((iso_size - 512)) count=8 statu
 [[ "$gpt_signature" == "EFI PART" ]] || fail "primary GPT header is missing"
 [[ "$backup_gpt_signature" == "EFI PART" ]] || fail "backup GPT header is missing"
 
-efi_extent="$(awk '$(NF - 1) == "EFI" && $NF == "System" { print $2, $4; exit }' "$fdisk_report")"
+efi_extent="$(
+  awk '$1 == "GPT" && $2 == "start" && $3 == "and" && $4 == "size" && $5 == ":" && $6 == "2" {
+    print $7, $8
+    exit
+  }' "$system_area_report"
+)"
 [[ -n "$efi_extent" ]] || fail "could not locate the EFI System Partition extents"
 read -r efi_start efi_sectors <<<"$efi_extent"
 [[ "$efi_start" =~ ^[0-9]+$ && "$efi_sectors" =~ ^[0-9]+$ ]] \
