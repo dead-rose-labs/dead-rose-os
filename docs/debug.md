@@ -12,6 +12,11 @@ normal boot continues directly to the Dead Rose interface without a tty1 login.
 If the graphical session is not healthy 90 seconds after boot, Dead Rose writes
 targeted greetd, Cage, application, DRM and user-session diagnostics to
 `/var/log/dead-rose/graphical-boot.log` and mirrors the report to the console.
+The first line includes `failed_stage`, which distinguishes the backend service,
+backend socket, greetd, Cage, application process, development URL and bundled
+frontend asset stages. A healthy frontend journal entry contains
+`DEAD_ROSE_FRONTEND_READY` with `url=tauri://localhost` (rendered as
+`http://tauri.localhost` on platforms where WebKit maps the custom scheme).
 
 Use a recovery or debug path for diagnosis. A successful normal boot stays quiet and does not expose a shell.
 
@@ -22,6 +27,7 @@ From an authorized recovery console:
 ```sh
 systemctl status greetd dead-rose-core
 journalctl -b -u greetd -u dead-rose-core
+journalctl -b _UID="$(id -u deadrose-ui)" | grep DEAD_ROSE_FRONTEND_READY
 loginctl list-sessions
 pgrep -a cage
 pgrep -a dead-rose-shell

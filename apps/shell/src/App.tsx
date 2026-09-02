@@ -14,7 +14,7 @@ import {
   InputGroupInput,
   Spinner,
 } from "@dead-rose/ui";
-import { authenticate, logout, type AuthFailure } from "./auth";
+import { authenticate, coreReadiness, logout, type AuthFailure } from "./auth";
 
 type View = { name: "login" } | { name: "dashboard"; sessionId: string };
 
@@ -25,11 +25,101 @@ const authMessages: Record<AuthFailure, string> = {
 };
 
 export function App() {
+  const [coreState, setCoreState] = useState<"starting" | "ready" | "unavailable">("starting");
+  const [retryGeneration, setRetryGeneration] = useState(0);
   const [view, setView] = useState<View>({ name: "login" });
+
+  useEffect(() => {
+    let cancelled = false;
+    let retryTimer: number | undefined;
+    let failedAttempts = 0;
+
+    async function check() {
+      let ready = false;
+      try {
+        ready = await coreReadiness();
+      } catch {
+        ready = false;
+      }
+      if (cancelled) return;
+      if (ready) {
+        setCoreState("ready");
+        return;
+      }
+      failedAttempts += 1;
+      setCoreState(failedAttempts >= 3 ? "unavailable" : "starting");
+      retryTimer = window.setTimeout(check, 2000);
+    }
+
+    setCoreState("starting");
+    void check();
+    return () => {
+      cancelled = true;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
+  }, [retryGeneration]);
+
+  if (coreState !== "ready") {
+    return (
+      <SystemStartup
+        unavailable={coreState === "unavailable"}
+        onRetry={() => setRetryGeneration((generation) => generation + 1)}
+      />
+    );
+  }
+
   return view.name === "login" ? (
     <LoginScreen onAuthenticated={(sessionId) => setView({ name: "dashboard", sessionId })} />
   ) : (
     <Dashboard sessionId={view.sessionId} onLogout={() => setView({ name: "login" })} />
+  );
+}
+
+function SystemStartup({ unavailable, onRetry }: { unavailable: boolean; onRetry: () => void }) {
+  return (
+    <main className="relative flex h-screen min-h-[720px] flex-col overflow-hidden bg-background p-10">
+      <BrandLockup />
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
+        aria-hidden="true"
+      >
+        <img
+          src="/dead-rose-os-logo.png"
+          alt=""
+          width={1254}
+          height={1254}
+          fetchPriority="high"
+          className="h-[68vh] max-h-[720px] min-h-[480px] w-auto object-contain opacity-[0.12] saturate-[0.65]"
+        />
+      </div>
+      <section
+        className="relative m-auto flex w-full max-w-sm -translate-y-5 flex-col items-center gap-5 text-center"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {unavailable ? (
+          <>
+            <div className="flex flex-col gap-2">
+              <h1 className="text-xl font-semibold tracking-[-0.02em]">System service unavailable</h1>
+              <p className="text-sm leading-5 text-muted-foreground">
+                Dead Rose Core did not become ready. The shell will keep trying to reconnect.
+              </p>
+            </div>
+            <Button type="button" variant="secondary" onClick={onRetry}>
+              Try again now
+            </Button>
+          </>
+        ) : (
+          <>
+            <Spinner />
+            <div className="flex flex-col gap-1.5">
+              <h1 className="text-base font-medium">Starting Dead Rose OS</h1>
+              <p className="font-mono text-xs text-muted-foreground">WAITING FOR CORE SERVICE</p>
+            </div>
+          </>
+        )}
+      </section>
+    </main>
   );
 }
 

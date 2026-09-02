@@ -5,10 +5,14 @@ if [[ -x /usr/lib/dead-rose/dead-rose-installer ]]; then
   profile=installer
   application=/usr/lib/dead-rose/dead-rose-installer
   identity=deadrose-installer
+  required_service=dead-rose-installer-backend.service
+  backend_socket=/run/dead-rose-installer/backend.sock
 else
   profile=installed
   application=/usr/lib/dead-rose/dead-rose-shell
   identity=deadrose-ui
+  required_service=dead-rose-core.service
+  backend_socket=/run/dead-rose/core.sock
 fi
 
 application_pid=""
@@ -19,21 +23,57 @@ for process in /proc/[0-9]*; do
   fi
 done
 
+identity_uid="$(id -u "$identity" 2>/dev/null || true)"
+frontend_log=""
+if [[ -n "$identity_uid" ]]; then
+  frontend_log="$(journalctl -b --no-pager "_UID=$identity_uid" 2>/dev/null \
+    | grep 'DEAD_ROSE_FRONTEND_READY' \
+    | tail -n 1 || true)"
+fi
+frontend_ready=no
+if grep -Eq 'url=(tauri://localhost|https?://tauri\.localhost)' <<<"$frontend_log"; then
+  frontend_ready=yes
+fi
+
 if systemctl is-active --quiet greetd.service \
+  && systemctl is-active --quiet "$required_service" \
+  && [[ -S "$backend_socket" ]] \
   && pgrep -x cage >/dev/null \
   && [[ -n "$application_pid" ]] \
-  && [[ "$(stat -c %U "/proc/$application_pid" 2>/dev/null || true)" == "$identity" ]]; then
+  && [[ "$(stat -c %U "/proc/$application_pid" 2>/dev/null || true)" == "$identity" ]] \
+  && [[ "$frontend_ready" == yes ]]; then
   exit 0
+fi
+
+failure_stage=unknown
+if ! systemctl is-active --quiet "$required_service"; then
+  failure_stage=backend-service
+elif [[ ! -S "$backend_socket" ]]; then
+  failure_stage=backend-socket
+elif ! systemctl is-active --quiet greetd.service; then
+  failure_stage=greetd
+elif ! pgrep -x cage >/dev/null; then
+  failure_stage=cage
+elif [[ -z "$application_pid" ]]; then
+  failure_stage=application
+elif grep -Eq 'url=http://127\.0\.0\.1:' <<<"$frontend_log"; then
+  failure_stage=frontend-development-url
+elif [[ "$frontend_ready" != yes ]]; then
+  failure_stage=frontend-assets
 fi
 
 log_directory=/var/log/dead-rose
 log="$log_directory/graphical-boot.log"
 install -d -m0750 -o root -g root "$log_directory"
 {
-  echo "DEAD_ROSE_GRAPHICAL_DIAGNOSTICS_BEGIN profile=$profile"
+  echo "DEAD_ROSE_GRAPHICAL_DIAGNOSTICS_BEGIN profile=$profile failed_stage=$failure_stage"
+  echo "required_service=$required_service state=$(systemctl is-active "$required_service" 2>/dev/null || true)"
+  echo "backend_socket=$backend_socket present=$([[ -S "$backend_socket" ]] && echo yes || echo no)"
   echo "greetd=$(systemctl is-active greetd.service 2>/dev/null || true)"
-  echo "expected_identity=$identity uid=$(id -u "$identity" 2>/dev/null || echo missing)"
+  echo "expected_identity=$identity uid=${identity_uid:-missing}"
   echo "application_pid=${application_pid:-missing}"
+  echo "frontend_ready=$frontend_ready"
+  echo "frontend_log=${frontend_log:-missing}"
   systemctl --failed --no-pager || true
   systemctl status greetd.service --no-pager || true
   loginctl list-sessions --no-pager || true

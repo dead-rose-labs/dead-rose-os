@@ -534,6 +534,9 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
+ "tracing",
+ "tracing-journald",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -592,6 +595,9 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
+ "tracing",
+ "tracing-journald",
+ "tracing-subscriber",
 ]
 
 [[package]]

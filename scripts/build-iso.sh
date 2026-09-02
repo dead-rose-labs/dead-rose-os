@@ -109,7 +109,8 @@ cd "$project_dir"
 mkosi --directory "$project_dir/os/installer" summary
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @dead-rose/installer build
-cargo build --release --locked -p dead-rose-installer -p dead-rose-installer-agent -p dead-rose-session --bins
+cargo build --release --locked -p dead-rose-installer -p dead-rose-installer-agent -p dead-rose-session --bins \
+  --features dead-rose-installer/custom-protocol
 require_regular_file "$project_dir/target/release/dead-rose-installer" "installer binary"
 require_regular_file "$project_dir/target/release/dead-rose-installer-agent" "installer backend"
 require_regular_file "$project_dir/target/release/dead-rose-session" "kiosk session supervisor"

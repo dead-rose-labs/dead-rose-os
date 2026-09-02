@@ -1,10 +1,17 @@
+#[cfg(all(not(debug_assertions), not(feature = "custom-protocol")))]
+compile_error!(
+    "release builds of dead-rose-installer must enable the custom-protocol feature to bundle frontend assets"
+);
+
 use dead_rose_system_types::{INSTALLER_SOCKET, InstallDisk, InstallerRequest, InstallerResponse};
 use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf};
+use tauri::webview::PageLoadEvent;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
     net::UnixStream,
 };
+use tracing::info;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -138,8 +145,37 @@ fn protocol_error() -> CommandError {
 }
 
 fn main() {
+    init_logging();
+    info!(
+        stage = "installer",
+        frontend = if cfg!(feature = "custom-protocol") {
+            "bundled"
+        } else {
+            "development-server"
+        },
+        "Dead Rose installer starting"
+    );
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![enumerate_disks, install, restart])
+        .on_page_load(|_, payload| {
+            if payload.event() == PageLoadEvent::Finished {
+                info!(
+                    stage = "frontend",
+                    url = %payload.url(),
+                    "DEAD_ROSE_FRONTEND_READY url={}",
+                    payload.url()
+                );
+            }
+        })
         .run(tauri::generate_context!())
         .expect("Dead Rose installer failed to start");
+}
+
+fn init_logging() {
+    if let Ok(layer) = tracing_journald::layer() {
+        use tracing_subscriber::prelude::*;
+        let _ = tracing_subscriber::registry().with(layer).try_init();
+    } else {
+        let _ = tracing_subscriber::fmt().with_target(false).try_init();
+    }
 }

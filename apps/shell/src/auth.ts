@@ -5,6 +5,10 @@ export type AuthResult =
   | { ok: true; sessionId: string }
   | { ok: false; error: AuthFailure; retryAfterSeconds?: number };
 
+export async function coreReadiness(): Promise<boolean> {
+  return invoke<boolean>("core_readiness");
+}
+
 export async function authenticate(username: string, password: string): Promise<AuthResult> {
   return invoke<AuthResult>("authenticate", { username, password });
 }

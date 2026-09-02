@@ -20,7 +20,8 @@ fi
 rm -f -- "$archive" "$archive.sha256"
 corepack pnpm install --frozen-lockfile
 corepack pnpm build
-cargo build --release --locked -p dead-rose-core -p dead-rose-shell -p dead-rose-session --bins
+cargo build --release --locked -p dead-rose-core -p dead-rose-shell -p dead-rose-session --bins \
+  --features dead-rose-shell/custom-protocol
 if [[ "$staging" != "$project_dir/build/os-extra" ]]; then echo "Refusing unsafe staging target" >&2; exit 1; fi
 find "$staging" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
 install -Dm755 target/release/dead-rose-core "$staging/usr/lib/dead-rose/dead-rose-core"

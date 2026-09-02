@@ -3,8 +3,8 @@ set -euo pipefail
 
 profile="${1:?profile required}"
 case "$profile" in
-  installed) application=/usr/lib/dead-rose/dead-rose-shell; required_service=dead-rose-core.service; marker=DEAD_ROSE_SHELL_READY; expected_user=deadrose-ui ;;
-  installer) application=/usr/lib/dead-rose/dead-rose-installer; required_service=dead-rose-installer-backend.service; marker=DEAD_ROSE_INSTALLER_UI_READY; expected_user=deadrose-installer ;;
+  installed) application=/usr/lib/dead-rose/dead-rose-shell; required_service=dead-rose-core.service; backend_socket=/run/dead-rose/core.sock; marker=DEAD_ROSE_SHELL_READY; expected_user=deadrose-ui ;;
+  installer) application=/usr/lib/dead-rose/dead-rose-installer; required_service=dead-rose-installer-backend.service; backend_socket=/run/dead-rose-installer/backend.sock; marker=DEAD_ROSE_INSTALLER_UI_READY; expected_user=deadrose-installer ;;
   *) echo "invalid smoke profile: $profile" >&2; exit 2 ;;
 esac
 
@@ -16,7 +16,7 @@ for _ in $(seq 1 180); do
       break
     fi
   done
-  if systemctl is-active --quiet greetd.service "$required_service" && pgrep -x cage >/dev/null && [[ -n "$app_pid" ]]; then
+  if systemctl is-active --quiet greetd.service "$required_service" && [[ -S "$backend_socket" ]] && pgrep -x cage >/dev/null && [[ -n "$app_pid" ]]; then
     if systemctl is-failed --quiet greetd.service "$required_service"; then
       echo "Dead Rose smoke: a critical runtime unit is failed" >&2
       exit 1
@@ -25,8 +25,15 @@ for _ in $(seq 1 180); do
     actual_uid="$(stat -c %u "/proc/$app_pid")"
     [[ "$actual_uid" == "$expected_uid" ]] || { echo "Dead Rose smoke: $application has uid $actual_uid, expected $expected_uid" >&2; exit 1; }
     [[ "$actual_uid" != 0 ]] || { echo "Dead Rose smoke: $application runs as root" >&2; exit 1; }
-    echo "$marker"
-    exit 0
+    frontend_log="$(journalctl -b --no-pager "_UID=$expected_uid" 2>/dev/null | grep 'DEAD_ROSE_FRONTEND_READY' | tail -n 1 || true)"
+    if grep -Eq 'url=(tauri://localhost|https?://tauri\.localhost)' <<<"$frontend_log"; then
+      echo "$marker"
+      exit 0
+    fi
+    if grep -Eq 'url=http://127\.0\.0\.1:' <<<"$frontend_log"; then
+      echo "Dead Rose smoke: $application loaded a development URL: $frontend_log" >&2
+      exit 1
+    fi
   fi
   sleep 1
 done

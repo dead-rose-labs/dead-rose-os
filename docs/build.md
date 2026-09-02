@@ -15,6 +15,8 @@ The supported image builder is Ubuntu Server 26.04 LTS on `amd64` with UEFI tool
 
 The intermediate Ubuntu root directory, verified root-filesystem archive, installer ISO, checksums and logs are written beneath `build/`. `./dr clean` removes only generated entries directly beneath that directory. The rootfs archive is an installer payload, not a bootable release artifact; the ISO is the release artifact.
 
+Both image paths build the Vite frontend before compiling the Tauri executable and enable Tauri's `custom-protocol` release feature. The resulting shell and installer load bundled assets from `tauri://localhost`; neither production image requires a Vite, npm or TCP localhost server. A release compile without the bundled-assets feature fails at compile time.
+
 ## Virtual machines
 
 Run the installer with `./dr installer-vm`; its persistent target is `build/installer-target.qcow2`. After installation, run that installed system with `./dr vm`. The VM command uses an ephemeral snapshot so a boot session cannot modify the persistent test target. Remove or rename the target only when a fresh destructive-install test is intended.
@@ -31,6 +33,6 @@ DEAD_ROSE_TEST_MARKERS=1 ./dr iso
 ./dr installer-vm --smoke
 ```
 
-The smoke test boots the ISO with a disposable disk, drives the typed backend protocol, waits for the standard Curtin installation to complete, then boots the installed target and proves that greetd, Cage, the core service and shell run correctly with the shell owned by `deadrose-ui`. CI rebuilds production artifacts without instrumentation before publishing them.
+The smoke test boots the ISO with a disposable disk, drives the typed backend protocol, waits for the standard Curtin installation to complete, then boots the installed target and proves that greetd, Cage, the core service and shell run correctly with the shell owned by `deadrose-ui`. Readiness requires the Tauri page-load marker to report a bundled `tauri://localhost` URL; a `127.0.0.1` development URL fails the smoke test. CI rebuilds production artifacts without instrumentation before publishing them.
 
 The canonical CI invocation is `./dr installer-vm --smoke`. QEMU serial output and failure-triggered systemd/journal diagnostics are retained under `build/logs/boot/` and uploaded even when the workflow fails.

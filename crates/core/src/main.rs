@@ -16,8 +16,15 @@ struct State {
 }
 
 #[tokio::main]
-async fn main() -> io::Result<()> {
+async fn main() {
     init_logging();
+    if let Err(error) = run().await {
+        error!(stage = "startup", %error, "Dead Rose core failed to start");
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> io::Result<()> {
     let socket = env::var("DEAD_ROSE_SOCKET").unwrap_or_else(|_| DEFAULT_SOCKET.to_owned());
     let credentials = env::var("DEAD_ROSE_CREDENTIALS")
         .unwrap_or_else(|_| "/var/lib/dead-rose/auth/accounts.json".to_owned());
@@ -33,7 +40,7 @@ async fn main() -> io::Result<()> {
         limiter: RateLimiter::new(5, Duration::from_secs(60)),
         sessions: Sessions::new(Duration::from_secs(15 * 60)),
     }));
-    info!(socket, "Dead Rose core ready");
+    info!(stage = "ready", socket, "Dead Rose core ready");
     loop {
         let (stream, _) = listener.accept().await?;
         let state = state.clone();
