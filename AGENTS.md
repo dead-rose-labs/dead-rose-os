@@ -1,14 +1,12 @@
 # Dead Rose OS agent rules
 
-1. Read `DESIGN.md` before frontend tasks.
-2. Do not introduce temporary runtime architecture.
-3. Do not add libraries without justification.
-4. Prefer Rust for privileged and system logic.
-5. React is presentation, not system authority.
-6. Never expose generic command execution.
-7. Use the shared Dead Rose UI in `packages/ui`.
-8. Run relevant tests before declaring completion.
-9. Do not silently weaken security to make a demo work.
-10. Do not simulate functionality that is not implemented.
-
-The milestone scope is defined by `docs/technical-tasks/Dead Rose OS — Technical Specification.md`.
+1. Dead Rose OS 0.1 is Ubuntu 26.04 BYOI transformed by pinned `kairos-init`.
+2. Kairos owns install, immutable lifecycle, Active/Passive, Recovery, and OCI upgrades.
+3. Never add custom bootloader, partitioning, ISO assembly, A/B, or rollback code.
+4. React is presentation; privileged behavior belongs to typed Rust Core requests.
+5. Never expose generic shell or command execution.
+6. The graphical shell runs as the unprivileged `deadrose` account.
+7. Persistent product state belongs under `/var/lib/dead-rose` and must survive upgrades.
+8. Production installation must always require an explicit disk choice and `ERASE` confirmation.
+9. Pin build dependencies and run relevant frontend, Rust, image, and QEMU tests.
+10. Do not claim an appliance acceptance check passed unless it actually ran.

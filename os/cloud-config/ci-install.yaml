@@ -1,0 +1,19 @@
+#cloud-config
+install:
+  device: /dev/vda
+  auto: true
+  bind_mounts:
+    - /var/lib/dead-rose
+  reboot: false
+  poweroff: true
+stages:
+  boot:
+    - name: Dead Rose persistence acceptance marker
+      commands:
+        - |
+          if test -f /var/lib/dead-rose/ci-persistence; then
+            echo DEAD_ROSE_PERSISTENCE_OK > /dev/ttyS0
+          else
+            touch /var/lib/dead-rose/ci-persistence
+            sync
+          fi

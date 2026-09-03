@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify tag matches VERSION
+        run: test "${GITHUB_REF_NAME}" = "v$(tr -d '[:space:]' < VERSION)"
+      - run: ./dr image
+      - run: ./dr test-image
+      - name: Publish versioned OCI image
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          docker tag "dead-rose-os:${version}" "ghcr.io/dead-rose-labs/dead-rose-os:${version}"
+          docker push "ghcr.io/dead-rose-labs/dead-rose-os:${version}"
+      - run: ./dr iso
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/dead-rose-os-0.1.0-amd64.iso
+            build/dead-rose-os-0.1.0-amd64.iso.sha256

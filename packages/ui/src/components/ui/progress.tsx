@@ -1,23 +1,20 @@
-export function Progress({ value, label }: { value: number; label: string }) {
+import { cn } from "../../lib/utils";
+
+export function Progress({ value, className }: { value?: number; className?: string }) {
+  const determinate = typeof value === "number";
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{label}</span>
-        <span className="font-mono">{value}%</span>
-      </div>
+    <div
+      role="progressbar"
+      aria-valuemin={determinate ? 0 : undefined}
+      aria-valuemax={determinate ? 100 : undefined}
+      aria-valuenow={determinate ? value : undefined}
+      aria-label={determinate ? `Progress: ${value}%` : "Operation in progress"}
+      className={cn("h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
+    >
       <div
-        className="h-1.5 overflow-hidden rounded-full bg-elevated"
-        role="progressbar"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={value}
-      >
-        <div
-          className="h-full rounded-full bg-primary transition-transform duration-200 ease-[var(--ease-out)] motion-reduce:transition-none"
-          style={{ transform: `translateX(${value - 100}%)` }}
-        />
-      </div>
+        className={cn("h-full rounded-full bg-primary", determinate ? "transition-[width]" : "w-1/3 animate-operation")}
+        style={determinate ? { width: `${Math.max(0, Math.min(value, 100))}%` } : undefined}
+      />
     </div>
   );
 }

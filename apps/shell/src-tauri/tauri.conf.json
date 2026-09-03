@@ -2,27 +2,25 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Dead Rose OS",
   "version": "0.1.0",
-  "identifier": "os.deadrose.shell",
+  "identifier": "systems.deadrose.os",
   "build": {
-    "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://127.0.0.1:1420",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../dist"
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
   },
   "app": {
     "security": {
-      "csp": "default-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' asset:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
     },
     "windows": [
       {
         "label": "main",
         "title": "Dead Rose OS",
-        "fullscreen": false,
+        "fullscreen": true,
         "decorations": false,
         "resizable": false,
-        "devtools": false
+        "backgroundColor": "#0b0b0c"
       }
     ]
   },
-  "bundle": { "active": false }
+  "bundle": { "active": false, "icon": ["icons/icon.png"] }
 }

@@ -5,24 +5,19 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/styles/globals.css"
+    "./styles.css": "./src/styles.css"
   },
   "dependencies": {
-    "@base-ui-components/react": "1.0.0-beta.2",
-    "@fontsource-variable/geist": "5.2.6",
-    "@fontsource-variable/geist-mono": "5.2.6",
-    "@tailwindcss/vite": "4.1.12",
+    "@base-ui/react": "1.7.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lucide-react": "0.542.0",
     "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "tailwind-merge": "3.3.1",
-    "tailwindcss": "4.1.12"
+    "tailwind-merge": "3.3.1"
   },
   "devDependencies": {
     "@types/react": "19.1.12",
-    "@types/react-dom": "19.1.9",
+    "tailwindcss": "4.1.12",
     "typescript": "5.9.2"
   }
 }

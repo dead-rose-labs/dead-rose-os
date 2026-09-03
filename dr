@@ -1,33 +1,61 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-command="${1:-help}"
-if [[ "$#" -gt 0 ]]; then
-  shift
-fi
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+cd "${repo_root}"
+source versions.env
 
-case "$command" in
-  bootstrap) exec "$project_dir/scripts/bootstrap-builder.sh" "$@" ;;
-  build) exec "$project_dir/scripts/build-os.sh" ;;
-  iso) exec "$project_dir/scripts/build-iso.sh" ;;
-  vm) exec "$project_dir/scripts/run-vm.sh" "$@" ;;
-  installer-vm) exec "$project_dir/scripts/run-installer-vm.sh" "$@" ;;
-  test) exec "$project_dir/scripts/test.sh" ;;
+usage() {
+  printf '%s\n' 'Usage: ./dr {doctor|build|image|iso|test|test-image|test-qemu|test-install|clean|version}'
+}
+
+check_command() {
+  if command -v "$1" >/dev/null 2>&1; then printf '[ok] %s\n' "$1"; else printf '[missing] %s\n' "$1"; return 1; fi
+}
+
+case "${1:-}" in
+  doctor)
+    failed=0
+    check_command docker || failed=1
+    if docker buildx version >/dev/null 2>&1 || docker-buildx version >/dev/null 2>&1; then printf '[ok] docker buildx\n'; else printf '[missing] docker buildx\n'; failed=1; fi
+    docker info >/dev/null 2>&1 && printf '[ok] Docker daemon\n' || { printf '[unavailable] Docker daemon\n'; failed=1; }
+    check_command qemu-system-x86_64 || failed=1
+    check_command qemu-img || failed=1
+    check_command git || failed=1
+    check_command cargo || failed=1
+    check_command node || failed=1
+    if find /usr/share /opt/homebrew/share -type f \( -name 'OVMF_CODE.fd' -o -name 'edk2-x86_64-code.fd' \) 2>/dev/null | grep -q .; then printf '[ok] OVMF\n'; else printf '[missing] OVMF\n'; failed=1; fi
+    exit "${failed}"
+    ;;
+  build)
+    corepack pnpm install --frozen-lockfile
+    corepack pnpm lint
+    corepack pnpm typecheck
+    corepack pnpm test
+    corepack pnpm build
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets -- -D warnings
+    cargo test --workspace
+    cargo build --release --package dead-rose-core
+    ;;
+  image) scripts/build-image.sh ;;
+  iso) scripts/build-iso.sh "${2:-}" ;;
+  test)
+    corepack pnpm lint
+    corepack pnpm typecheck
+    corepack pnpm test
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets -- -D warnings
+    cargo test --workspace
+    ;;
+  test-image) scripts/test-image.sh ;;
+  test-qemu) scripts/test-qemu.sh "${2:-live}" ;;
+  test-install) scripts/test-install-qemu.sh ;;
   clean)
-    build_dir="$project_dir/build"
-    if [[ "$build_dir" != "$project_dir/build" ]]; then echo "Refusing unsafe clean target" >&2; exit 1; fi
-    find "$build_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+    cargo clean
+    find apps packages -type d -name dist -prune -exec rm -rf -- {} +
+    printf 'Removed generated build output\n'
     ;;
-  help|-h|--help)
-    echo "Dead Rose OS build interface"
-    echo "  ./dr bootstrap      Prepare Ubuntu 26.04 amd64 builder"
-    echo "  ./dr build          Build the Ubuntu root filesystem payload"
-    echo "  ./dr iso            Build the installer ISO"
-    echo "  ./dr vm             Boot the installed VM target in QEMU"
-    echo "  ./dr installer-vm   Boot installer; --smoke-cd/--smoke-usb validate both media paths"
-    echo "  ./dr test           Run frontend, Rust and static tests"
-    echo "  ./dr clean          Remove generated build artifacts"
-    ;;
-  *) echo "Unknown command: $command" >&2; "$0" help; exit 2 ;;
+  version) tr -d '[:space:]' < VERSION; printf '\n' ;;
+  *) usage; exit 2 ;;
 esac

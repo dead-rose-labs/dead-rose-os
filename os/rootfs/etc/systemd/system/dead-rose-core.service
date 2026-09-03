@@ -1,0 +1,33 @@
+[Unit]
+Description=Dead Rose Core
+After=local-fs.target dbus.service NetworkManager.service
+Wants=NetworkManager.service
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Group=deadrose
+ExecStart=/opt/dead-rose/bin/dead-rose-core
+Restart=on-failure
+RestartSec=5s
+RuntimeDirectory=dead-rose
+RuntimeDirectoryMode=0750
+StateDirectory=dead-rose
+StateDirectoryMode=0750
+UMask=0007
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectSystem=full
+ReadWritePaths=/var/lib/dead-rose /run/dead-rose /run /tmp /var/log /dev
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

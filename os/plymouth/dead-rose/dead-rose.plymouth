@@ -1,8 +1,0 @@
-[Plymouth Theme]
-Name=Dead Rose
-Description=Dead Rose OS quiet boot
-ModuleName=script
-
-[script]
-ImageDir=/usr/share/plymouth/themes/dead-rose
-ScriptFile=/usr/share/plymouth/themes/dead-rose/dead-rose.script

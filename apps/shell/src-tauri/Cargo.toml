@@ -5,17 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [build-dependencies]
-tauri-build = { version = "2.4.0", features = [] }
+tauri-build = { version = "=2.6.3", features = [] }
 
 [dependencies]
-dead-rose-ipc = { path = "../../../crates/ipc" }
-dead-rose-system-types = { path = "../../../crates/system-types" }
-serde.workspace = true
-tauri.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-tracing-journald.workspace = true
-tracing-subscriber.workspace = true
-
-[features]
-custom-protocol = ["tauri/custom-protocol"]
+dead-rose-ipc = { path = "../../../crates/dead-rose-ipc" }
+dead-rose-types = { path = "../../../crates/dead-rose-types" }
+serde_json.workspace = true
+tauri = { version = "=2.11.5", features = [] }

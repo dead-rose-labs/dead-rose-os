@@ -2,24 +2,12 @@
   "name": "dead-rose-os",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "packageManager": "pnpm@10.15.0",
   "scripts": {
-    "build": "corepack pnpm -r --if-present build",
-    "dev:shell": "corepack pnpm --filter @dead-rose/shell dev",
-    "dev:installer": "corepack pnpm --filter @dead-rose/installer dev",
-    "lint": "corepack pnpm -r --if-present lint",
-    "typecheck": "corepack pnpm -r --if-present typecheck",
-    "test": "corepack pnpm -r --if-present test",
-    "format:check": "prettier --check ."
-  },
-  "devDependencies": {
-    "@eslint/js": "9.34.0",
-    "eslint": "9.34.0",
-    "eslint-plugin-react-hooks": "5.2.0",
-    "eslint-plugin-react-refresh": "0.4.20",
-    "globals": "16.3.0",
-    "prettier": "3.6.2",
-    "typescript-eslint": "8.41.0"
+    "build": "corepack pnpm --filter @dead-rose/shell build",
+    "dev": "corepack pnpm --filter @dead-rose/shell dev",
+    "lint": "corepack pnpm --filter @dead-rose/shell lint",
+    "test": "corepack pnpm --filter @dead-rose/shell test",
+    "typecheck": "corepack pnpm --filter @dead-rose/shell typecheck"
   }
 }

@@ -1,0 +1,59 @@
+@import "tailwindcss";
+@source "../../../apps/shell/src/**/*.{ts,tsx}";
+@source "./**/*.{ts,tsx}";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --font-sans: "Geist Variable", sans-serif;
+  --font-mono: "Geist Mono Variable", monospace;
+}
+
+:root {
+  color-scheme: dark;
+  --background: oklch(0.15 0.002 286);
+  --foreground: oklch(0.964 0.004 91);
+  --card: oklch(0.179 0.004 286);
+  --card-foreground: oklch(0.964 0.004 91);
+  --primary: oklch(0.459 0.134 8);
+  --primary-foreground: oklch(0.964 0.004 91);
+  --secondary: oklch(0.206 0.004 286);
+  --secondary-foreground: oklch(0.964 0.004 91);
+  --muted: oklch(0.206 0.004 286);
+  --muted-foreground: oklch(0.722 0.006 85);
+  --border: oklch(0.257 0.006 286);
+  --input: oklch(0.291 0.007 286);
+  --ring: oklch(0.459 0.134 8);
+  --destructive: oklch(0.562 0.14 13);
+  --destructive-foreground: oklch(0.985 0 0);
+}
+
+* { border-color: var(--border); }
+html, body, #root { min-height: 100%; margin: 0; background: var(--background); }
+body { min-width: 1024px; overflow: hidden; color: var(--foreground); font-family: "Geist Variable", sans-serif; font-size: 14px; text-rendering: optimizeLegibility; }
+button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+::selection { background: oklch(0.459 0.134 8 / 0.42); color: var(--foreground); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { border: 3px solid var(--background); border-radius: 999px; background: var(--input); }
+.font-mono { font-family: "Geist Mono Variable", monospace; font-variant-numeric: tabular-nums; }
+.brand-mark { width: 3px; height: 24px; border-radius: 999px; background: var(--primary); box-shadow: 7px 0 0 oklch(0.403 0.117 10 / 0.45); }
+.status-healthy { color: #4f8a63; }
+.status-warning { color: #b58a4a; }
+.status-critical { color: #b84c5d; }
+.status-unknown { color: var(--muted-foreground); }
+@keyframes operation { from { transform: translateX(-120%); } to { transform: translateX(320%); } }
+.animate-operation { animation: operation 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }

@@ -1,0 +1,21 @@
+[package]
+name = "dead-rose-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+argon2.workspace = true
+chrono.workspace = true
+dead-rose-types = { path = "../dead-rose-types" }
+libc.workspace = true
+rand.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile = "3.21.0"

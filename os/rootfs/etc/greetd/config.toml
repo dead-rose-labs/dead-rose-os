@@ -1,0 +1,6 @@
+[terminal]
+vt = 1
+
+[default_session]
+command = "/usr/bin/cage -- /opt/dead-rose/bin/dead-rose-shell"
+user = "deadrose"
