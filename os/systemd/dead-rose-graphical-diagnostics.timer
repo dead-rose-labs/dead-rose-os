@@ -3,6 +3,7 @@ Description=Check the Dead Rose graphical session after boot
 
 [Timer]
 OnBootSec=90s
+OnUnitActiveSec=60s
 AccuracySec=1s
 Unit=dead-rose-graphical-diagnostics.service
 

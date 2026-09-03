@@ -2,14 +2,14 @@
 
 ## Boot choices
 
-Press Escape while GRUB starts to reveal the menu. The installed image exposes its normal entry and GRUB-generated recovery entry. The installer ISO provides normal, verbose and debug entries; debug boots to a multi-user target with increased kernel and systemd logging instead of hiding status output.
+Press Escape while GRUB starts to reveal the menu. The installed image exposes its normal entry and GRUB-generated recovery entry. The installer ISO provides normal, safe-graphics, verbose and debug entries. Safe graphics keeps kernel modesetting available to Cage but uses the pixman renderer and disables WebKit DMABUF rendering. Debug boots to a multi-user target with increased kernel and systemd logging instead of hiding status output.
 
 The installer debug entry also enables systemd's root debug shell on tty9. In
 VirtualBox, switch to it with Host+F9 (the default Host key on Windows is Right
 Ctrl). This shell exists only after explicitly selecting the debug GRUB entry;
 normal boot continues directly to the Dead Rose interface without a tty1 login.
 
-If the graphical session is not healthy 90 seconds after boot, Dead Rose writes
+If the graphical session is not healthy 90 seconds after boot, and every 60 seconds thereafter, Dead Rose appends
 targeted greetd, Cage, application, DRM and user-session diagnostics to
 `/var/log/dead-rose/graphical-boot.log` and mirrors the report to the console.
 The first line includes `failed_stage`, which distinguishes the backend service,
@@ -17,6 +17,10 @@ backend socket, greetd, Cage, application process, development URL and bundled
 frontend asset stages. A healthy frontend journal entry contains
 `DEAD_ROSE_FRONTEND_READY` with `url=tauri://localhost` (rendered as
 `http://tauri.localhost` on platforms where WebKit maps the custom scheme).
+The installer backend uses the Unix socket `/run/dead-rose-installer/backend.sock`;
+it does not listen on a TCP localhost port. The session journal records separate
+application and Cage exit codes, terminating signals and core-dump state. After
+an unexpected normal-renderer exit, the supervisor retries in safe graphics mode.
 
 Use a recovery or debug path for diagnosis. A successful normal boot stays quiet and does not expose a shell.
 

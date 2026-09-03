@@ -66,25 +66,37 @@ log_directory=/var/log/dead-rose
 log="$log_directory/graphical-boot.log"
 install -d -m0750 -o root -g root "$log_directory"
 {
-  echo "DEAD_ROSE_GRAPHICAL_DIAGNOSTICS_BEGIN profile=$profile failed_stage=$failure_stage"
+  echo "DEAD_ROSE_GRAPHICAL_DIAGNOSTICS_BEGIN profile=$profile failed_stage=$failure_stage timestamp=$(date --iso-8601=seconds)"
   echo "required_service=$required_service state=$(systemctl is-active "$required_service" 2>/dev/null || true)"
-  echo "backend_socket=$backend_socket present=$([[ -S "$backend_socket" ]] && echo yes || echo no)"
+  echo "backend_transport=unix backend_socket=$backend_socket present=$([[ -S "$backend_socket" ]] && echo yes || echo no) tcp_url=none"
   echo "greetd=$(systemctl is-active greetd.service 2>/dev/null || true)"
   echo "expected_identity=$identity uid=${identity_uid:-missing}"
   echo "application_pid=${application_pid:-missing}"
   echo "frontend_ready=$frontend_ready"
   echo "frontend_log=${frontend_log:-missing}"
+  systemctl show greetd.service "$required_service" \
+    -p Id -p ActiveState -p SubState -p Result -p ExecMainCode -p ExecMainStatus -p NRestarts || true
   systemctl --failed --no-pager || true
   systemctl status greetd.service --no-pager || true
+  systemctl status "$required_service" --no-pager || true
   loginctl list-sessions --no-pager || true
-  ps -eo user,pid,ppid,args | grep -E 'greetd|cage|dead-rose' || true
+  ps -eo user,pid,ppid,stat,lstart,args --forest | grep -E 'greetd|cage|dead-rose|WebKit' || true
+  if command -v ss >/dev/null 2>&1; then
+    ss -xlpn | grep -E 'dead-rose|backend\.sock' || true
+    ss -ltnp | grep -E '127\.0\.0\.1|\[::1\]' || true
+  fi
   journalctl -b --no-pager -n 600 \
     -u greetd.service \
     -u dead-rose-installer-backend.service \
     -u dead-rose-core.service || true
   journalctl -b --no-pager -n 400 "_UID=$(id -u "$identity" 2>/dev/null || echo 0)" || true
-  dmesg | grep -Ei 'drm|vmwgfx|virtio_gpu|vbox|gpu|egl' | tail -n 300 || true
+  journalctl -b -k --no-pager | grep -Ei 'drm|amdgpu|i915|nouveau|vmwgfx|virtio_gpu|vbox|gpu|egl|hang|fault' | tail -n 400 || true
+  if command -v coredumpctl >/dev/null 2>&1; then
+    coredumpctl --no-pager --no-legend list 2>/dev/null \
+      | grep -E 'cage|dead-rose-(installer|shell)|WebKitWebProcess' \
+      | tail -n 100 || true
+  fi
   echo "DEAD_ROSE_GRAPHICAL_DIAGNOSTICS_END"
-} >"$log" 2>&1
+} >>"$log" 2>&1
 chmod 0640 "$log"
-cat "$log"
+tail -n 1200 "$log"

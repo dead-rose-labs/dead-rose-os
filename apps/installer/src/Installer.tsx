@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { AlertTriangle, Check, HardDrive, RotateCw } from "lucide-react";
 import {
@@ -49,6 +49,8 @@ const installerErrors: Record<string, string> = {
   state_sync_failed: "Persistent state could not be synchronized. Do not boot from this installation.",
   restart_failed: "The system could not restart. Remove the installation media and restart manually.",
   progress_channel_failed: "Installer progress could not be reported safely. Review the installer log before retrying.",
+  backend_unavailable: "The installer service is unavailable. Retry the connection; no disk has been changed.",
+  backend_protocol_error: "The installer service returned an invalid response. Retry or collect graphical diagnostics.",
 };
 
 function installerError(error: unknown, fallback: string) {
@@ -90,17 +92,20 @@ export function Installer() {
   });
   const selectedDisk = useMemo(() => disks.find((disk) => disk.device === request.device), [disks, request.device]);
 
-  useEffect(() => {
-    if (step !== 1) return;
+  const scanDisks = useCallback(() => {
     setLoadingDisks(true);
     setError(undefined);
-    invoke<Disk[]>("enumerate_disks")
+    return invoke<Disk[]>("enumerate_disks")
       .then(setDisks)
       .catch((reason: unknown) =>
         setError(installerError(reason, "Installation disks could not be enumerated. Check the installer service.")),
       )
       .finally(() => setLoadingDisks(false));
-  }, [step]);
+  }, []);
+
+  useEffect(() => {
+    if (step === 1) void scanDisks();
+  }, [scanDisks, step]);
 
   function update<K extends keyof InstallRequest>(key: K, value: InstallRequest[K]) {
     setRequest((current) => ({ ...current, [key]: value }));
@@ -186,6 +191,11 @@ export function Installer() {
                   <Spinner />
                   Scanning disks…
                 </div>
+              ) : error ? (
+                <Button variant="ghost" onClick={() => void scanDisks()} className="self-start">
+                  <RotateCw data-icon="inline-start" aria-hidden="true" />
+                  Retry disk scan
+                </Button>
               ) : (
                 <div className="flex flex-col gap-3">
                   {disks.length === 0 ? (

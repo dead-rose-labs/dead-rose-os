@@ -23,7 +23,7 @@ Both image paths build the Vite frontend before compiling the Tauri executable a
 
 Run the installer with `./dr installer-vm`; its persistent target is `build/installer-target.qcow2`. After installation, run that installed system with `./dr vm`. The VM command uses an ephemeral snapshot so a boot session cannot modify the persistent test target. Remove or rename the target only when a fresh destructive-install test is intended.
 
-For VirtualBox use an EFI-enabled Linux 64-bit VM, VMSVGA, at least 4 GiB RAM, two CPUs, and 128 MiB video memory. Attach the ISO as optical media and a separate 32 GiB or larger target disk. Enable 3D acceleration when supported. If the host GPU path is unreliable, use the installer debug entry and set `DEAD_ROSE_SOFTWARE_RENDERING=1` for the session while diagnosing; this forces Mesa software rendering.
+For VirtualBox use an EFI-enabled Linux 64-bit VM, VMSVGA, at least 4 GiB RAM, two CPUs, and 128 MiB video memory. Attach the ISO as optical media and a separate 32 GiB or larger target disk. Enable 3D acceleration when supported. If the host GPU path is unreliable, select `Dead Rose OS Installer (safe graphics)` in GRUB; normal boot first uses the detected hardware path and automatically retries with pixman plus WebKit DMABUF rendering disabled after an unexpected graphical exit.
 
 ## Boot smoke tests
 

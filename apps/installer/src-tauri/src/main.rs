@@ -11,7 +11,7 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
     net::UnixStream,
 };
-use tracing::info;
+use tracing::{error, info, warn};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -109,7 +109,16 @@ async fn request_once(request: InstallerRequest) -> Result<InstallerResponse, Co
 async fn connect() -> Result<UnixStream, CommandError> {
     let socket =
         env::var("DEAD_ROSE_INSTALLER_SOCKET").unwrap_or_else(|_| INSTALLER_SOCKET.to_owned());
-    UnixStream::connect(socket).await.map_err(transport_error)
+    UnixStream::connect(&socket).await.map_err(|error| {
+        warn!(transport = "unix", socket, %error, "installer backend connection failed");
+        transport_error(error)
+    })
+}
+
+#[tauri::command]
+fn report_frontend_error(message: String) {
+    let message: String = message.chars().take(8192).collect();
+    error!(stage = "frontend", %message, "installer frontend reported a fatal error");
 }
 
 async fn write_request(
@@ -148,6 +157,8 @@ fn main() {
     init_logging();
     info!(
         stage = "installer",
+        backend_transport = "unix",
+        backend_socket = %env::var("DEAD_ROSE_INSTALLER_SOCKET").unwrap_or_else(|_| INSTALLER_SOCKET.to_owned()),
         frontend = if cfg!(feature = "custom-protocol") {
             "bundled"
         } else {
@@ -156,7 +167,12 @@ fn main() {
         "Dead Rose installer starting"
     );
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![enumerate_disks, install, restart])
+        .invoke_handler(tauri::generate_handler![
+            enumerate_disks,
+            install,
+            restart,
+            report_frontend_error
+        ])
         .on_page_load(|_, payload| {
             if payload.event() == PageLoadEvent::Finished {
                 info!(
@@ -167,8 +183,30 @@ fn main() {
                 );
             }
         })
-        .run(tauri::generate_context!())
-        .expect("Dead Rose installer failed to start");
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                warn!(
+                    window = window.label(),
+                    "installer window close request prevented"
+                );
+                api.prevent_close();
+            }
+            tauri::WindowEvent::Destroyed => {
+                error!(window = window.label(), "installer window destroyed");
+            }
+            _ => {}
+        })
+        .build(tauri::generate_context!())
+        .expect("Dead Rose installer failed to build")
+        .run(|_, event| match event {
+            tauri::RunEvent::Ready => info!(stage = "event-loop", "installer event loop ready"),
+            tauri::RunEvent::ExitRequested { code, api, .. } => {
+                warn!(?code, "installer exit request prevented");
+                api.prevent_exit();
+            }
+            tauri::RunEvent::Exit => error!("installer event loop exited"),
+            _ => {}
+        });
 }
 
 fn init_logging() {

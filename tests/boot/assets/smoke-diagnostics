@@ -40,7 +40,9 @@ for specification in \
 done
 systemctl --failed --no-pager || true
 loginctl list-sessions --no-pager || true
-ps -eo user,pid,ppid,args | grep -E 'greetd|cage|dead-rose' || true
+ps -eo user,pid,ppid,stat,lstart,args --forest | grep -E 'greetd|cage|dead-rose|WebKit' || true
+systemctl show greetd.service dead-rose-installer-backend.service dead-rose-core.service \
+  -p Id -p ActiveState -p SubState -p Result -p ExecMainCode -p ExecMainStatus -p NRestarts || true
 journalctl -b --no-pager -n 500 \
   -u greetd.service \
   -u dead-rose-state-init.service \
@@ -54,4 +56,10 @@ for identity in deadrose-ui deadrose-installer; do
     journalctl -b --no-pager -n 300 "_UID=$(id -u "$identity")" || true
   fi
 done
+journalctl -b -k --no-pager | grep -Ei 'drm|amdgpu|i915|nouveau|vmwgfx|virtio_gpu|vbox|gpu|egl|hang|fault' | tail -n 400 || true
+if command -v coredumpctl >/dev/null 2>&1; then
+  coredumpctl --no-pager --no-legend list 2>/dev/null \
+    | grep -E 'cage|dead-rose-(installer|shell)|WebKitWebProcess' \
+    | tail -n 100 || true
+fi
 echo "DEAD_ROSE_SMOKE_DIAGNOSTICS_END"
