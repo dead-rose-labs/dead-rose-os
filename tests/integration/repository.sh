@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+trap 'status=$?; echo "Repository invariant failed at line $LINENO: $BASH_COMMAND" >&2; exit "$status"' ERR
+
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 command -v rg >/dev/null || { echo "MISSING rg" >&2; exit 1; }
 
@@ -150,7 +152,11 @@ rg -q '^ID_LIKE="ubuntu debian"$' "$project_dir/os/mkosi.extra/etc/os-release"
 rg -q '^UBUNTU_CODENAME=resolute$' "$project_dir/os/mkosi.extra/etc/os-release"
 rg -q '^localhost$' "$project_dir/os/mkosi.extra/etc/hostname"
 bash -n "$project_dir/os/mkosi.extra/etc/os-release"
-[[ "$(rg -o 'systemd\.firstboot=no' "$project_dir/os/installer/grub.cfg" | wc -l | tr -d ' ')" == 3 ]]
+firstboot_entry_count="$(rg -o 'systemd\.firstboot=no' "$project_dir/os/installer/grub.cfg" | wc -l | tr -d ' ')"
+[[ "$firstboot_entry_count" == 4 ]] || {
+  echo "Expected systemd.firstboot=no in all four installer GRUB entries, found $firstboot_entry_count" >&2
+  exit 1
+}
 rg -q 'menuentry "Dead Rose OS Installer \(debug\)"' "$project_dir/os/installer/grub.cfg"
 
 rg -q 'test -f' "$project_dir/scripts/build-iso.sh"
