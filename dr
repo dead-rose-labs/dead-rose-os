@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "${repo_root}"
+# shellcheck source=versions.env
 source versions.env
 
 usage() {
@@ -21,6 +22,7 @@ case "${1:-}" in
     docker info >/dev/null 2>&1 && printf '[ok] Docker daemon\n' || { printf '[unavailable] Docker daemon\n'; failed=1; }
     check_command qemu-system-x86_64 || failed=1
     check_command qemu-img || failed=1
+    check_command mkisofs || failed=1
     check_command git || failed=1
     check_command cargo || failed=1
     check_command node || failed=1
@@ -48,9 +50,9 @@ case "${1:-}" in
     cargo clippy --workspace --all-targets -- -D warnings
     cargo test --workspace
     ;;
-  test-image) scripts/test-image.sh ;;
-  test-qemu) scripts/test-qemu.sh "${2:-live}" ;;
-  test-install) scripts/test-install-qemu.sh ;;
+  test-image) shift; scripts/test-image.sh "$@" ;;
+  test-qemu) shift; scripts/test-qemu.sh "$@" ;;
+  test-install) shift; scripts/test-install-qemu.sh "$@" ;;
   clean)
     cargo clean
     find apps packages -type d -name dist -prune -exec rm -rf -- {} +

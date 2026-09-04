@@ -36,4 +36,6 @@ build/dead-rose-os-0.1.0-amd64.iso
 build/dead-rose-os-0.1.0-amd64.iso.sha256
 ```
 
+GitHub builds use the pinned Kairos Factory reusable workflow from the Kairos monorepo. Factory builds `os/Dockerfile` once and uploads the OCI/ISO artifacts; Dead Rose then verifies that exact ISO with its own UEFI live, installation, installed-boot, and persistence tests.
+
 See [Build](docs/BUILD.md), [Testing](docs/TESTING.md), [Installation](docs/INSTALLATION.md), and [Updates](docs/UPDATES.md).

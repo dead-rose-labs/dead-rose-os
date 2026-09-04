@@ -1,64 +1,62 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
 
 jobs:
-  quality:
+  frontend:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 10.15.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20.19.5
           cache: pnpm
-      - uses: dtolnay/rust-toolchain@1.93.0
-        with:
-          components: clippy,rustfmt
-      - name: Linux native build dependencies
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dead-rose-frontend-${{ github.sha }}
+          path: apps/shell/dist
+          if-no-files-found: error
+
+  rust:
+    needs: frontend
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dead-rose-frontend-${{ github.sha }}
+          path: apps/shell/dist
+      - uses: dtolnay/rust-toolchain@283fb51ee3c8a49cd7c8ff30102f3fcf3cfbe0e1 # Rust 1.93.0
+        with:
+          components: clippy,rustfmt
+      - name: Linux native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --locked
-      - run: tests/integration/repository.sh
 
-  appliance:
-    needs: quality
+  repository-validation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - name: Install QEMU UEFI tools
-        run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-utils ovmf
-      - name: Build Kairos OCI image
-        run: ./dr image
-      - name: Verify OCI filesystem
-        run: ./dr test-image
-      - name: Build production ISO with AuroraBoot
-        run: ./dr iso
-      - name: Boot production ISO
-        run: ./dr test-qemu live
-      - name: Build CI auto-install ISO
-        run: ./dr iso --ci
-      - name: Install, boot from disk, and verify persistence
-        run: ./dr test-install
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dead-rose-os-0.1.0-amd64
-          path: |
-            build/dead-rose-os-0.1.0-amd64.iso
-            build/dead-rose-os-0.1.0-amd64.iso.sha256
-          if-no-files-found: error
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Check repository architecture
+        run: tests/integration/repository.sh
+      - name: Check shell scripts
+        run: shellcheck -x dr scripts/*.sh tests/integration/*.sh

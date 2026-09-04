@@ -3,6 +3,7 @@ ARG NODE_VERSION=20.19.5
 ARG RUST_VERSION=1.93.0
 ARG KAIROS_INIT_VERSION=v0.17.2
 ARG UBUNTU_VERSION=26.04
+ARG BASE_IMAGE=ubuntu:${UBUNTU_VERSION}
 
 FROM node:${NODE_VERSION}-bookworm-slim AS web-builder
 ARG PNPM_VERSION=10.15.0
@@ -31,7 +32,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM quay.io/kairos/kairos-init:${KAIROS_INIT_VERSION} AS kairos-init
 
-FROM ubuntu:${UBUNTU_VERSION}
+FROM ${BASE_IMAGE}
 ARG VERSION=0.1.0
 ARG TARGETARCH=amd64
 LABEL org.opencontainers.image.title="Dead Rose OS" \

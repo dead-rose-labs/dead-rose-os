@@ -11,10 +11,13 @@ Appliance acceptance requires Linux amd64 Docker plus QEMU/OVMF:
 ./dr test-image
 ./dr iso
 ./dr test-qemu live
-./dr iso --ci
 ./dr test-install
 ```
 
-The production ISO test waits for the real `DEAD_ROSE_UI_READY` process marker. The CI-only ISO auto-installs to its dedicated `/dev/vda`, powers off, boots with the ISO removed, verifies First Setup, then boots again and requires a persistent-state marker. Time passing alone is never treated as success.
+The production ISO test waits for the real `DEAD_ROSE_UI_READY` process marker. In GitHub Actions, acceptance downloads exactly one Factory ISO and verifies its Factory-generated checksum before QEMU starts. It never rebuilds the image or ISO.
+
+For automated installation, QEMU attaches `os/cloud-config/ci-install.yaml` as a temporary `cidata` config-drive alongside the unchanged production ISO. The config selects only the test VM's dedicated `/dev/vda`. After installation QEMU detaches both ISO drives, boots the installed disk, verifies First Setup, then boots it again and requires a persistent-state marker. The downloadable production ISO still contains `auto: false` and never auto-selects a physical disk.
+
+On every acceptance failure, serial console logs are uploaded as `dead-rose-qemu-diagnostics-<sha>`. Time passing alone is never treated as success.
 
 Upgrade acceptance requires two published, pinned OCI test versions. Run the Core `StartUpgrade` request against the second approved GHCR tag, reboot, verify `/etc/kairos-release`, Core/UI readiness, version change, and the unchanged SQLite state. This test must not be reported as passed unless those images were actually published and exercised.

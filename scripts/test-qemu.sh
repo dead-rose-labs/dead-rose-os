@@ -3,9 +3,28 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 version=$(tr -d '[:space:]' < "${repo_root}/VERSION")
-mode="${1:-live}"
+mode="live"
 iso="${repo_root}/build/dead-rose-os-${version}-amd64.iso"
 disk="${repo_root}/build/dead-rose-test.qcow2"
+
+while (( $# > 0 )); do
+  case "$1" in
+    live|installed)
+      mode=$1
+      shift
+      ;;
+    --iso)
+      [[ $# -ge 2 ]] || { printf '%s\n' '--iso requires a value' >&2; exit 2; }
+      iso=$2
+      shift 2
+      ;;
+    *)
+      printf 'Unknown argument: %s\n' "$1" >&2
+      exit 2
+      ;;
+  esac
+done
+
 serial_log="${repo_root}/build/qemu-${mode}.log"
 
 find_ovmf() {
@@ -19,10 +38,16 @@ find_ovmf() {
 }
 
 ovmf=$(find_ovmf) || { printf 'OVMF firmware was not found\n' >&2; exit 1; }
+test -s "${iso}"
 [[ -f "${disk}" ]] || qemu-img create -f qcow2 "${disk}" 40G
 rm -f "${serial_log}"
 
-args=(-machine q35 -m 4096 -smp 2 -cpu max -drive "if=pflash,format=raw,readonly=on,file=${ovmf}" -drive "file=${disk},if=virtio,format=qcow2" -nic user,model=virtio-net-pci -device virtio-vga -display none -serial "file:${serial_log}" -no-reboot)
+acceleration=(-accel tcg -cpu max)
+if [[ "$(uname -m)" == "x86_64" && -r /dev/kvm && -w /dev/kvm ]]; then
+  acceleration=(-accel kvm -cpu host)
+fi
+
+args=(-machine q35 -m 4096 -smp 2 "${acceleration[@]}" -drive "if=pflash,format=raw,readonly=on,file=${ovmf}" -drive "file=${disk},if=virtio,format=qcow2" -nic user,model=virtio-net-pci -device virtio-vga -display none -serial "file:${serial_log}" -no-reboot)
 if [[ "${mode}" == "live" ]]; then
   args+=(-cdrom "${iso}" -boot d)
 else
