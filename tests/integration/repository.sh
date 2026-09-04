@@ -22,6 +22,8 @@ fi
 grep -Fq 'auroraboot:${AURORABOOT_VERSION}' scripts/build-iso.sh
 grep -Fq '/usr/share/OVMF/OVMF_CODE_4M.fd' scripts/test-qemu.sh
 grep -Fq '/usr/share/OVMF/OVMF_CODE_4M.fd' scripts/test-install-qemu.sh
+grep -Fq "mkdir -p \"\${repo_root}/build\"" scripts/test-qemu.sh
+grep -Fq "mkdir -p \"\${repo_root}/build\"" scripts/test-install-qemu.sh
 grep -Fq 'auto: false' os/cloud-config/default.yaml
 grep -Fq 'auto: true' os/cloud-config/ci-install.yaml
 grep -Fq '/var/lib/dead-rose' os/cloud-config/default.yaml

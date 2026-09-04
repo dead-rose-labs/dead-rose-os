@@ -25,6 +25,7 @@ while (( $# > 0 )); do
   esac
 done
 
+mkdir -p "${repo_root}/build"
 serial_log="${repo_root}/build/qemu-${mode}.log"
 
 find_ovmf() {
