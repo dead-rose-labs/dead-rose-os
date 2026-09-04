@@ -12,6 +12,11 @@ grep -Fq 'ARG BASE_IMAGE=ubuntu:${UBUNTU_VERSION}' os/Dockerfile
 grep -Fq 'FROM ${BASE_IMAGE}' os/Dockerfile
 # shellcheck disable=SC2016
 grep -Fq 'kairos-init:${KAIROS_INIT_VERSION}' os/Dockerfile
+grep -Fq '/kairos-init -l debug --model generic --version "${VERSION}"' os/Dockerfile
+if grep -Eq '/kairos-init .* -s (install|init)' os/Dockerfile; then
+  echo 'kairos-init must run its complete default transformation, not a partial stage' >&2
+  exit 1
+fi
 # shellcheck disable=SC2016
 grep -Fq 'auroraboot:${AURORABOOT_VERSION}' scripts/build-iso.sh
 grep -Fq 'auto: false' os/cloud-config/default.yaml

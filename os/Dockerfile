@@ -55,7 +55,7 @@ COPY --from=rust-builder /src/target/release/dead-rose-shell /opt/dead-rose/bin/
 COPY os/rootfs/ /
 
 RUN --mount=type=bind,from=kairos-init,src=/kairos-init,dst=/kairos-init \
-    /kairos-init -l debug -s install --model generic --version "${VERSION}" \
+    /kairos-init -l debug --model generic --version "${VERSION}" \
     && chmod 0755 /opt/dead-rose/bin/dead-rose-core /opt/dead-rose/bin/dead-rose-shell \
     && mkdir -p /etc/systemd/system/multi-user.target.wants \
     && ln -sfn /etc/systemd/system/dead-rose-core.service /etc/systemd/system/multi-user.target.wants/dead-rose-core.service \
