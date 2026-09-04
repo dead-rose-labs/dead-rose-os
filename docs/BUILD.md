@@ -19,6 +19,8 @@ Factory receives `os/Dockerfile`, `ubuntu:26.04`, the pinned versions from `vers
 
 Trivy runs inside Factory in `report-only` mode. Grype runs immediately after Factory through the pinned `grype-report.yml` reusable workflow because the Factory-pinned Anchore action otherwise turns a Grype runtime/DB outage into a Factory failure before ISO generation. Critical findings and scanner failures remain explicit in the job summary and JSON artifact, while the report-only scan cannot suppress ISO generation or QEMU acceptance.
 
+The image keeps `graphical.target` as its canonical default. Kairos deliberately selects `multi-user.target` again in its live initramfs stage, so the same `greetd.service` is wanted by both targets. This preserves one session owner (`greetd → Cage → Dead Rose Shell`) and makes the graphical appliance session start in both live and installed Kairos boot paths.
+
 Local development continues to use the same Dockerfile and pins:
 
 ```bash

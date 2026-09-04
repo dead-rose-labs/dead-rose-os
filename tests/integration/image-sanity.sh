@@ -23,7 +23,7 @@ fi
 test -f /etc/systemd/system/dead-rose-core.service
 test "$(readlink /etc/systemd/system/multi-user.target.wants/dead-rose-core.service)" = /etc/systemd/system/dead-rose-core.service
 test "$(readlink /etc/systemd/system/multi-user.target.wants/NetworkManager.service)" = /usr/lib/systemd/system/NetworkManager.service
-test ! -e /etc/systemd/system/multi-user.target.wants/greetd.service
+test "$(readlink /etc/systemd/system/multi-user.target.wants/greetd.service)" = /usr/lib/systemd/system/greetd.service
 test "$(readlink /etc/systemd/system/graphical.target.wants/greetd.service)" = /usr/lib/systemd/system/greetd.service
 test "$(readlink /etc/systemd/system/display-manager.service)" = /usr/lib/systemd/system/greetd.service
 test "$(readlink /etc/systemd/system/default.target)" = /usr/lib/systemd/system/graphical.target

@@ -56,13 +56,16 @@ COPY --from=rust-builder /src/target/release/dead-rose-core /opt/dead-rose/bin/d
 COPY --from=rust-builder /src/target/release/dead-rose-shell /opt/dead-rose/bin/dead-rose-shell
 COPY os/rootfs/ /
 
+# Kairos selects multi-user.target during its live initramfs stage. Keep
+# graphical.target canonical for normal systemd boots, while attaching the
+# same greetd unit to Kairos' appliance boot target as well.
 RUN --mount=type=bind,from=kairos-init,src=/kairos-init,dst=/kairos-init \
     /kairos-init -l debug --model generic --version "${VERSION}" \
     && chmod 0755 /opt/dead-rose/bin/dead-rose-core /opt/dead-rose/bin/dead-rose-shell \
     && mkdir -p /etc/systemd/system/multi-user.target.wants /etc/systemd/system/graphical.target.wants \
     && ln -sfn /etc/systemd/system/dead-rose-core.service /etc/systemd/system/multi-user.target.wants/dead-rose-core.service \
     && ln -sfn /usr/lib/systemd/system/NetworkManager.service /etc/systemd/system/multi-user.target.wants/NetworkManager.service \
-    && rm -f /etc/systemd/system/multi-user.target.wants/greetd.service \
+    && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/multi-user.target.wants/greetd.service \
     && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/graphical.target.wants/greetd.service \
     && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service \
     && ln -sfn /usr/lib/systemd/system/graphical.target /etc/systemd/system/default.target \
