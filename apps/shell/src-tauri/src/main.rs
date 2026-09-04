@@ -10,11 +10,16 @@ async fn core_request(request: serde_json::Value) -> Result<ResponseEnvelope, St
     })
     .await
     .map_err(|error| format!("Core request task failed: {error}"))??;
-    if announces_state
-        && response.ok
-        && let Some(mode) = response.result.as_ref().and_then(serde_json::Value::as_str)
-    {
-        eprintln!("DEAD_ROSE_UI_READY mode={mode}");
+    if announces_state && response.ok {
+        let readiness = tauri::async_runtime::spawn_blocking(move || {
+            dead_rose_ipc::call(CORE_SOCKET_PATH, Request::ReportUiReady)
+                .map_err(|error| error.to_string())
+        })
+        .await
+        .map_err(|error| format!("UI readiness task failed: {error}"))??;
+        if !readiness.ok {
+            return Err("Core rejected the typed UI readiness acknowledgement".into());
+        }
     }
     Ok(response)
 }

@@ -20,6 +20,17 @@ pub enum ApplicationState {
     Dashboard,
 }
 
+impl ApplicationState {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::LiveInstaller => "live_installer",
+            Self::FirstBoot => "first_boot",
+            Self::Login => "login",
+            Self::Dashboard => "dashboard",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SystemInfo {
     pub hostname: String,
@@ -94,6 +105,7 @@ pub enum Request {
     GetApplicationState {
         session_token: Option<String>,
     },
+    ReportUiReady,
     CreateAdmin {
         username: String,
         password: String,
@@ -105,6 +117,27 @@ pub enum Request {
     Logout {
         session_token: String,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ApplicationState, Request};
+    use serde_json::json;
+
+    #[test]
+    fn ui_readiness_is_a_narrow_typed_request() {
+        assert_eq!(
+            serde_json::to_value(Request::ReportUiReady).unwrap(),
+            json!({"method": "report_ui_ready"})
+        );
+    }
+
+    #[test]
+    fn application_state_label_matches_its_wire_value() {
+        let state = ApplicationState::LiveInstaller;
+        assert_eq!(state.as_str(), "live_installer");
+        assert_eq!(serde_json::to_value(&state).unwrap(), json!(state.as_str()));
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -145,17 +145,9 @@ fn dispatch(core: &Core, envelope: RequestEnvelope) -> ResponseEnvelope {
             .and_then(|_| system_action("poweroff"))
             .and_then(to_value),
         Request::GetApplicationState { session_token } => {
-            if core.boot_mode == BootMode::Live {
-                to_value(ApplicationState::LiveInstaller)
-            } else {
-                core.state
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .application_state(session_token.as_deref())
-                    .map_err(component_error("application_state"))
-                    .and_then(to_value)
-            }
+            application_state(core, session_token.as_deref()).and_then(to_value)
         }
+        Request::ReportUiReady => report_ui_ready(core).and_then(to_value),
         Request::CreateAdmin { username, password } => {
             if core.boot_mode == BootMode::Live {
                 Err(api_error(
@@ -187,6 +179,27 @@ fn dispatch(core: &Core, envelope: RequestEnvelope) -> ResponseEnvelope {
         Ok(value) => ResponseEnvelope::success(id, value),
         Err((code, message, component)) => ResponseEnvelope::failure(id, code, message, component),
     }
+}
+
+fn application_state(
+    core: &Core,
+    session_token: Option<&str>,
+) -> Result<ApplicationState, (String, String, String)> {
+    if core.boot_mode == BootMode::Live {
+        Ok(ApplicationState::LiveInstaller)
+    } else {
+        core.state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .application_state(session_token)
+            .map_err(component_error("application_state"))
+    }
+}
+
+fn report_ui_ready(core: &Core) -> Result<ApplicationState, (String, String, String)> {
+    let state = application_state(core, None)?;
+    eprintln!("DEAD_ROSE_UI_READY mode={}", state.as_str());
+    Ok(state)
 }
 
 fn detect_boot_mode() -> BootMode {
