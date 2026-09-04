@@ -33,6 +33,11 @@ grep -Fq 'kairos-io/kairos/.github/workflows/reusable-factory.yaml@911d4e3fef31b
 grep -Fq 'dockerfile_path: os/Dockerfile' .github/workflows/os-build.yml
 grep -Fq 'base_image: ubuntu:26.04' .github/workflows/os-build.yml
 grep -Fq 'cloud_config: os/cloud-config/default.yaml' .github/workflows/os-build.yml
+grep -Fq 'grype: false' .github/workflows/os-build.yml
+grep -Fq 'uses: ./.github/workflows/grype-report.yml' .github/workflows/os-build.yml
+grep -Fq 'anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439' .github/workflows/grype-report.yml
+grep -Fq 'grype-version: v0.118.0' .github/workflows/grype-report.yml
+grep -Fq 'continue-on-error: true' .github/workflows/grype-report.yml
 grep -Fq 'uses: ./.github/workflows/ci.yml' .github/workflows/os-build.yml
 grep -Fq 'needs: ci' .github/workflows/os-build.yml
 grep -Fq 'workflow_call:' .github/workflows/ci.yml

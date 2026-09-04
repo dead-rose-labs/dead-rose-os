@@ -1,0 +1,104 @@
+name: Grype report
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: Immutable OCI image reference to scan
+        required: true
+        type: string
+      registry_username:
+        description: Registry user used to pull the image
+        required: true
+        type: string
+    secrets:
+      registry_password:
+        required: true
+    outputs:
+      status:
+        description: Grype result (passed, findings, or error)
+        value: ${{ jobs.report.outputs.status }}
+      critical_count:
+        description: Number of fixed critical findings, when available
+        value: ${{ jobs.report.outputs.critical_count }}
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    outputs:
+      status: ${{ steps.report.outputs.status }}
+      critical_count: ${{ steps.report.outputs.critical_count }}
+    steps:
+      - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ inputs.registry_username }}
+          password: ${{ secrets.registry_password }}
+      # Factory's pinned scan-action fails the whole reusable job when Grype
+      # itself exits abnormally, even in report-only mode. Run the same pinned
+      # scanner after Factory so findings and scanner outages are both visible
+      # without preventing ISO generation or QEMU acceptance.
+      - name: Scan candidate OCI with Grype
+        id: grype
+        continue-on-error: true
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          image: ${{ inputs.image }}
+          output-format: json
+          output-file: grype.json
+          severity-cutoff: critical
+          add-cpes-if-none: true
+          only-fixed: true
+          fail-build: false
+          grype-version: v0.118.0
+      - name: Publish Grype report summary
+        id: report
+        if: always()
+        shell: bash
+        env:
+          SCAN_OUTCOME: ${{ steps.grype.outcome }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          set -euo pipefail
+          status=error
+          critical_count=unknown
+
+          if [[ -s grype.json ]] && jq -e '.matches | type == "array"' grype.json >/dev/null; then
+            critical_count=$(jq '[.matches[]? | select((.vulnerability.severity // "") == "Critical")] | length' grype.json)
+            if [[ "$critical_count" -gt 0 ]]; then
+              status=findings
+            else
+              status=passed
+            fi
+          fi
+
+          {
+            echo "status=$status"
+            echo "critical_count=$critical_count"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo '## Dead Rose Grype Report'
+            echo
+            echo "- Image: \`$IMAGE\`"
+            echo "- Scanner step: \`$SCAN_OUTCOME\`"
+            echo "- Result: \`$status\`"
+            echo "- Fixed critical findings: \`$critical_count\`"
+            echo '- Policy: `report-only` (non-blocking)'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$status" == error ]]; then
+            echo '::warning::Grype failed without a valid JSON report; ISO and QEMU acceptance continue under report-only policy.'
+          fi
+      - name: Upload Grype JSON report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dead-rose-grype-${{ github.sha }}
+          path: grype.json
+          if-no-files-found: warn
+

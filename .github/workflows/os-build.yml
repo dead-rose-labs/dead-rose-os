@@ -94,13 +94,27 @@ jobs:
       registry_repository: dead-rose-os
       custom_tag_format: 'ci-$COMMIT_SHA'
       custom_artifact_format: 'dead-rose-os-$VERSION-$ARCH'
-      grype: true
+      # Grype runs in the report-only job below. Factory's pinned scanner action
+      # aborts on scanner runtime errors before it can generate the ISO.
+      grype: false
       trivy: true
       security_scan_mode: report-only
       sbom: true
       release: false
     secrets:
       registry_username: ${{ github.actor }}
+      registry_password: ${{ secrets.GITHUB_TOKEN }}
+
+  grype-report:
+    needs: factory
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/grype-report.yml
+    with:
+      image: ghcr.io/dead-rose-labs/dead-rose-os:ci-${{ github.sha }}
+      registry_username: ${{ github.actor }}
+    secrets:
       registry_password: ${{ secrets.GITHUB_TOKEN }}
 
   acceptance:
@@ -159,6 +173,7 @@ jobs:
     needs:
       - metadata
       - factory
+      - grype-report
       - acceptance
     runs-on: ubuntu-24.04
     steps:
@@ -177,5 +192,6 @@ jobs:
             echo '- OCI: `ghcr.io/dead-rose-labs/dead-rose-os:ci-${{ github.sha }}`'
             echo '- ISO artifact: `dead-rose-os-${{ needs.metadata.outputs.version }}-amd64.iso.zip`'
             echo '- Factory: `${{ needs.factory.result }}`'
+            echo '- Grype report: `${{ needs.grype-report.outputs.status }}` (`${{ needs.grype-report.outputs.critical_count }}` fixed critical)'
             echo '- QEMU acceptance: `${{ needs.acceptance.result }}`'
           } >> "$GITHUB_STEP_SUMMARY"

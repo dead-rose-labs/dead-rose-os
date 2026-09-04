@@ -17,6 +17,8 @@ All lifecycle tool versions are centralized in `versions.env`. The image is tran
 
 Factory receives `os/Dockerfile`, `ubuntu:26.04`, the pinned versions from `versions.env`, the safe production cloud config, and the generic amd64 target. It builds and publishes an immutable `ci-<full-sha>` OCI tag, creates one ISO with pinned AuroraBoot, computes its checksum, and uploads it as a GitHub artifact. Release tags use an immutable `candidate-<full-sha>` OCI until acceptance passes.
 
+Trivy runs inside Factory in `report-only` mode. Grype runs immediately after Factory through the pinned `grype-report.yml` reusable workflow because the Factory-pinned Anchore action otherwise turns a Grype runtime/DB outage into a Factory failure before ISO generation. Critical findings and scanner failures remain explicit in the job summary and JSON artifact, while the report-only scan cannot suppress ISO generation or QEMU acceptance.
+
 Local development continues to use the same Dockerfile and pins:
 
 ```bash
