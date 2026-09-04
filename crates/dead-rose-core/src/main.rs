@@ -10,9 +10,9 @@ use dead_rose_types::{
 use operations::OperationManager;
 use state::StateStore;
 use std::collections::{HashMap, VecDeque};
-use std::fs;
+use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,6 +22,7 @@ use std::time::{Duration, Instant};
 const MAX_FRAME_BYTES: u64 = 64 * 1024;
 const MAX_LOGIN_ATTEMPTS: usize = 5;
 const LOGIN_WINDOW: Duration = Duration::from_secs(60);
+const SERIAL_CONSOLE_PATH: &str = "/dev/ttyS0";
 
 struct Core {
     boot_mode: BootMode,
@@ -67,11 +68,14 @@ fn run() -> Result<(), String> {
         .map_err(|error| format!("failed to bind {}: {error}", socket_path.display()))?;
     fs::set_permissions(&socket_path, fs::Permissions::from_mode(0o660))
         .map_err(|error| format!("failed to secure core socket: {error}"))?;
-    eprintln!(
-        "DEAD_ROSE_CORE_READY mode={:?} at={}",
-        core.boot_mode,
+    announce_ready(&format!(
+        "DEAD_ROSE_CORE_READY mode={} at={}",
+        match &core.boot_mode {
+            BootMode::Live => "live",
+            BootMode::Installed => "installed",
+        },
         Utc::now().to_rfc3339()
-    );
+    ));
 
     for stream in listener.incoming() {
         match stream {
@@ -198,8 +202,19 @@ fn application_state(
 
 fn report_ui_ready(core: &Core) -> Result<ApplicationState, (String, String, String)> {
     let state = application_state(core, None)?;
-    eprintln!("DEAD_ROSE_UI_READY mode={}", state.as_str());
+    announce_ready(&format!("DEAD_ROSE_UI_READY mode={}", state.as_str()));
     Ok(state)
+}
+
+fn announce_ready(message: &str) {
+    eprintln!("{message}");
+    if let Ok(mut serial) = OpenOptions::new()
+        .write(true)
+        .custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY)
+        .open(SERIAL_CONSOLE_PATH)
+    {
+        let _ = writeln!(serial, "{message}");
+    }
 }
 
 fn detect_boot_mode() -> BootMode {

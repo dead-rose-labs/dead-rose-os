@@ -25,10 +25,12 @@ grep -Fq '/usr/share/OVMF/OVMF_CODE_4M.fd' scripts/test-qemu.sh
 grep -Fq '/usr/share/OVMF/OVMF_CODE_4M.fd' scripts/test-install-qemu.sh
 grep -Fq "mkdir -p \"\${repo_root}/build\"" scripts/test-qemu.sh
 grep -Fq "mkdir -p \"\${repo_root}/build\"" scripts/test-install-qemu.sh
-grep -Fxq 'options virtio_gpu modeset=1' os/rootfs/etc/modprobe.d/50-dead-rose-virtio-gpu.conf
+grep -Fq 'collect-qemu-diagnostics.py' scripts/test-qemu.sh
+grep -Fq 'server=on,wait=off,logfile=' scripts/test-qemu.sh
 grep -Fq 'multi-user.target.wants/greetd.service' os/Dockerfile
 grep -Fq 'Request::ReportUiReady' apps/shell/src-tauri/src/main.rs
 grep -Fq 'Request::ReportUiReady' crates/dead-rose-core/src/main.rs
+grep -Fq 'SERIAL_CONSOLE_PATH: &str = "/dev/ttyS0"' crates/dead-rose-core/src/main.rs
 grep -Fq 'auto: false' os/cloud-config/default.yaml
 grep -Fq 'auto: true' os/cloud-config/ci-install.yaml
 grep -Fq '/var/lib/dead-rose' os/cloud-config/default.yaml

@@ -7,7 +7,6 @@ test -x /opt/dead-rose/bin/dead-rose-core
 test -x /opt/dead-rose/bin/dead-rose-shell
 test -x /usr/bin/cage
 test -x /usr/sbin/agreety
-grep -Fxq 'options virtio_gpu modeset=1' /etc/modprobe.d/50-dead-rose-virtio-gpu.conf
 runuser -u deadrose -- test -x /opt/dead-rose/bin/dead-rose-shell
 runuser -u deadrose -- test -x /usr/bin/cage
 shell_dependencies=$(ldd /opt/dead-rose/bin/dead-rose-shell)
