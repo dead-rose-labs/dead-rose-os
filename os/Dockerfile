@@ -48,7 +48,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
     && groupadd --system deadrose \
-    && useradd --system --gid deadrose --home-dir /var/lib/dead-rose/ui --shell /usr/sbin/nologin deadrose
+    && useradd --system --gid deadrose --home-dir /var/lib/dead-rose/ui --shell /usr/sbin/nologin deadrose \
+    && usermod --append --groups video deadrose \
+    && if getent group render >/dev/null; then usermod --append --groups render deadrose; fi
 
 COPY --from=rust-builder /src/target/release/dead-rose-core /opt/dead-rose/bin/dead-rose-core
 COPY --from=rust-builder /src/target/release/dead-rose-shell /opt/dead-rose/bin/dead-rose-shell
@@ -57,12 +59,17 @@ COPY os/rootfs/ /
 RUN --mount=type=bind,from=kairos-init,src=/kairos-init,dst=/kairos-init \
     /kairos-init -l debug --model generic --version "${VERSION}" \
     && chmod 0755 /opt/dead-rose/bin/dead-rose-core /opt/dead-rose/bin/dead-rose-shell \
-    && mkdir -p /etc/systemd/system/multi-user.target.wants \
+    && mkdir -p /etc/systemd/system/multi-user.target.wants /etc/systemd/system/graphical.target.wants \
     && ln -sfn /etc/systemd/system/dead-rose-core.service /etc/systemd/system/multi-user.target.wants/dead-rose-core.service \
     && ln -sfn /usr/lib/systemd/system/NetworkManager.service /etc/systemd/system/multi-user.target.wants/NetworkManager.service \
-    && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/multi-user.target.wants/greetd.service \
+    && rm -f /etc/systemd/system/multi-user.target.wants/greetd.service \
+    && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/graphical.target.wants/greetd.service \
     && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service \
+    && ln -sfn /usr/lib/systemd/system/graphical.target /etc/systemd/system/default.target \
     && test -s /etc/kairos-release
+
+RUN --mount=type=bind,source=tests/integration/image-sanity.sh,target=/tmp/image-sanity.sh,readonly \
+    /bin/bash /tmp/image-sanity.sh
 
 STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]

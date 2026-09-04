@@ -2,7 +2,7 @@
 
 `./dr test` runs frontend ESLint, TypeScript, Vitest, Rust formatting, Clippy with warnings denied, and Rust tests.
 
-`tests/integration/repository.sh` checks the pinned Ubuntu/Kairos/AuroraBoot architecture, production install safety, persistence configuration, removal of legacy branding/build systems, and absence of shell interpolation in privileged Rust commands.
+`tests/integration/repository.sh` checks the pinned Ubuntu/Kairos/AuroraBoot architecture, production install safety, persistence configuration, removal of legacy branding/build systems, and absence of shell interpolation in privileged Rust commands. The image build itself runs `tests/integration/image-sanity.sh` before Factory can turn the OCI filesystem into an ISO; this validates greetd session roles, `graphical.target`, GPU access, locale, executables, and dynamic dependencies.
 
 Appliance acceptance requires Linux amd64 Docker plus QEMU/OVMF:
 
