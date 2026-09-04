@@ -31,7 +31,7 @@ case "${1:-}" in
     check_command git || failed=1
     check_command cargo || failed=1
     check_command node || failed=1
-    if find /usr/share /opt/homebrew/share -type f \( -name 'OVMF_CODE.fd' -o -name 'edk2-x86_64-code.fd' \) 2>/dev/null | grep -q .; then printf '[ok] OVMF\n'; else printf '[missing] OVMF\n'; failed=1; fi
+    if find /usr/share /opt/homebrew/share -type f \( -name 'OVMF_CODE_4M.fd' -o -name 'OVMF_CODE.fd' -o -name 'edk2-x86_64-code.fd' \) 2>/dev/null | grep -q .; then printf '[ok] OVMF\n'; else printf '[missing] OVMF\n'; failed=1; fi
     exit "${failed}"
     ;;
   build)

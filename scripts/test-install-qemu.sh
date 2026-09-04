@@ -28,7 +28,7 @@ while (( $# > 0 )); do
   esac
 done
 
-for candidate in /usr/share/OVMF/OVMF_CODE.fd /usr/share/edk2/x64/OVMF_CODE.fd /opt/homebrew/share/qemu/edk2-x86_64-code.fd; do
+for candidate in /usr/share/OVMF/OVMF_CODE_4M.fd /usr/share/OVMF/OVMF_CODE.fd /usr/share/edk2/x64/OVMF_CODE.fd /opt/homebrew/share/qemu/edk2-x86_64-code.fd; do
   if [[ -f "${candidate}" ]]; then ovmf="${candidate}"; break; fi
 done
 : "${ovmf:?OVMF firmware was not found}"

@@ -12,6 +12,7 @@ grep -Fq 'ARG BASE_IMAGE=ubuntu:${UBUNTU_VERSION}' os/Dockerfile
 grep -Fq 'FROM ${BASE_IMAGE}' os/Dockerfile
 # shellcheck disable=SC2016
 grep -Fq 'kairos-init:${KAIROS_INIT_VERSION}' os/Dockerfile
+# shellcheck disable=SC2016
 grep -Fq '/kairos-init -l debug --model generic --version "${VERSION}"' os/Dockerfile
 if grep -Eq '/kairos-init .* -s (install|init)' os/Dockerfile; then
   echo 'kairos-init must run its complete default transformation, not a partial stage' >&2
@@ -19,6 +20,8 @@ if grep -Eq '/kairos-init .* -s (install|init)' os/Dockerfile; then
 fi
 # shellcheck disable=SC2016
 grep -Fq 'auroraboot:${AURORABOOT_VERSION}' scripts/build-iso.sh
+grep -Fq '/usr/share/OVMF/OVMF_CODE_4M.fd' scripts/test-qemu.sh
+grep -Fq '/usr/share/OVMF/OVMF_CODE_4M.fd' scripts/test-install-qemu.sh
 grep -Fq 'auto: false' os/cloud-config/default.yaml
 grep -Fq 'auto: true' os/cloud-config/ci-install.yaml
 grep -Fq '/var/lib/dead-rose' os/cloud-config/default.yaml

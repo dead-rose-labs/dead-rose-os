@@ -29,6 +29,7 @@ serial_log="${repo_root}/build/qemu-${mode}.log"
 
 find_ovmf() {
   for candidate in \
+    /usr/share/OVMF/OVMF_CODE_4M.fd \
     /usr/share/OVMF/OVMF_CODE.fd \
     /usr/share/edk2/x64/OVMF_CODE.fd \
     /opt/homebrew/share/qemu/edk2-x86_64-code.fd; do
