@@ -20,4 +20,6 @@ For automated installation, QEMU attaches `os/cloud-config/ci-install.yaml` as a
 
 On every acceptance failure, serial console logs are uploaded as `dead-rose-qemu-diagnostics-<sha>`. Time passing alone is never treated as success.
 
+AuroraBoot's amd64 live-media template uses `nomodeset`. The image explicitly enables KMS only for the `virtio_gpu` device used by QEMU acceptance; it does not force software rendering or alter physical GPU drivers.
+
 Upgrade acceptance requires two published, pinned OCI test versions. Run the Core `StartUpgrade` request against the second approved GHCR tag, reboot, verify `/etc/kairos-release`, Core/UI readiness, version change, and the unchanged SQLite state. This test must not be reported as passed unless those images were actually published and exercised.
