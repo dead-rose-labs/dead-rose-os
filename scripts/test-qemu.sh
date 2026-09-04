@@ -47,6 +47,8 @@ if [[ "$(uname -m)" == "x86_64" && -r /dev/kvm && -w /dev/kvm ]]; then
   acceleration=(-accel kvm -cpu host)
 fi
 
+# Commas belong to QEMU option values, not to Bash array separators.
+# shellcheck disable=SC2054
 args=(-machine q35 -m 4096 -smp 2 "${acceleration[@]}" -drive "if=pflash,format=raw,readonly=on,file=${ovmf}" -drive "file=${disk},if=virtio,format=qcow2" -nic user,model=virtio-net-pci -device virtio-vga -display none -serial "file:${serial_log}" -no-reboot)
 if [[ "${mode}" == "live" ]]; then
   args+=(-cdrom "${iso}" -boot d)

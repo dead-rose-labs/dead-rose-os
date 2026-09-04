@@ -5,9 +5,14 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "${repo_root}"
 
 test "$(tr -d '[:space:]' < VERSION)" = "0.1.0"
+# These are literal Dockerfile ARG references, not shell expansions.
+# shellcheck disable=SC2016
 grep -Fq 'ARG BASE_IMAGE=ubuntu:${UBUNTU_VERSION}' os/Dockerfile
+# shellcheck disable=SC2016
 grep -Fq 'FROM ${BASE_IMAGE}' os/Dockerfile
+# shellcheck disable=SC2016
 grep -Fq 'kairos-init:${KAIROS_INIT_VERSION}' os/Dockerfile
+# shellcheck disable=SC2016
 grep -Fq 'auroraboot:${AURORABOOT_VERSION}' scripts/build-iso.sh
 grep -Fq 'auto: false' os/cloud-config/default.yaml
 grep -Fq 'auto: true' os/cloud-config/ci-install.yaml

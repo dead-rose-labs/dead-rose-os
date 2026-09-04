@@ -50,6 +50,13 @@ jobs:
 
   factory:
     needs: metadata
+    # The pinned upstream workflow declares these permissions at job scope.
+    permissions:
+      contents: write
+      packages: write
+      actions: read
+      security-events: write
+      id-token: write
     # Kairos Factory reusable workflow — pinned commit, post-monorepo migration
     uses: kairos-io/kairos/.github/workflows/reusable-factory.yaml@911d4e3fef31ba9bf85923fc846470a0a3d68e2b
     with:

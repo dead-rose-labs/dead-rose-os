@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-# shellcheck source=../versions.env
+# shellcheck source=versions.env
 source "${repo_root}/versions.env"
 version=$(tr -d '[:space:]' < "${repo_root}/VERSION")
 cloud_config="${repo_root}/os/cloud-config/default.yaml"

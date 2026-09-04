@@ -19,7 +19,12 @@ case "${1:-}" in
     failed=0
     check_command docker || failed=1
     if docker buildx version >/dev/null 2>&1 || docker-buildx version >/dev/null 2>&1; then printf '[ok] docker buildx\n'; else printf '[missing] docker buildx\n'; failed=1; fi
-    docker info >/dev/null 2>&1 && printf '[ok] Docker daemon\n' || { printf '[unavailable] Docker daemon\n'; failed=1; }
+    if docker info >/dev/null 2>&1; then
+      printf '[ok] Docker daemon\n'
+    else
+      printf '[unavailable] Docker daemon\n'
+      failed=1
+    fi
     check_command qemu-system-x86_64 || failed=1
     check_command qemu-img || failed=1
     check_command mkisofs || failed=1
