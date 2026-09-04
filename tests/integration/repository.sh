@@ -29,6 +29,14 @@ grep -Fq 'kairos-io/kairos/.github/workflows/reusable-factory.yaml@911d4e3fef31b
 grep -Fq 'dockerfile_path: os/Dockerfile' .github/workflows/os-build.yml
 grep -Fq 'base_image: ubuntu:26.04' .github/workflows/os-build.yml
 grep -Fq 'cloud_config: os/cloud-config/default.yaml' .github/workflows/os-build.yml
+grep -Fq 'uses: ./.github/workflows/ci.yml' .github/workflows/os-build.yml
+grep -Fq 'needs: ci' .github/workflows/os-build.yml
+grep -Fq 'workflow_call:' .github/workflows/ci.yml
+
+if rg -n '^  (push|pull_request):' .github/workflows/ci.yml; then
+  printf 'The reusable CI workflow must not start a second workflow run\n' >&2
+  exit 1
+fi
 
 if rg -n 'kairos-io/kairos-factory-action|pull_request_target|uses: [^ ]+@(main|master|latest|v[0-9])' .github/workflows; then
   printf 'A workflow uses an archived, unsafe, or moving external dependency\n' >&2

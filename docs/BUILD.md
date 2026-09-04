@@ -13,7 +13,7 @@ All lifecycle tool versions are centralized in `versions.env`. The image is tran
 
 ## GitHub builds
 
-Application checks run in `.github/workflows/ci.yml`. Full OS builds run separately in `.github/workflows/os-build.yml` through the official Kairos Factory reusable workflow in the `kairos-io/kairos` monorepo, pinned to a full commit SHA. The archived `kairos-io/kairos-factory-action` repository is not used.
+`.github/workflows/os-build.yml` is the single CI entry point. It first calls the reusable application checks in `.github/workflows/ci.yml`; only a successful CI result on `main` can continue to the full OS build through the official Kairos Factory reusable workflow in the `kairos-io/kairos` monorepo, pinned to a full commit SHA. Pull requests stop after CI. The archived `kairos-io/kairos-factory-action` repository is not used.
 
 Factory receives `os/Dockerfile`, `ubuntu:26.04`, the pinned versions from `versions.env`, the safe production cloud config, and the generic amd64 target. It builds and publishes an immutable `ci-<full-sha>` OCI tag, creates one ISO with pinned AuroraBoot, computes its checksum, and uploads it as a GitHub artifact. Release tags use an immutable `candidate-<full-sha>` OCI until acceptance passes.
 
