@@ -56,7 +56,11 @@ COPY os/rootfs/ /
 RUN --mount=type=bind,from=kairos-init,src=/kairos-init,dst=/kairos-init \
     /kairos-init -l debug -s install --model generic --version "${VERSION}" \
     && chmod 0755 /opt/dead-rose/bin/dead-rose-core /opt/dead-rose/bin/dead-rose-shell \
-    && systemctl enable dead-rose-core.service greetd.service NetworkManager.service \
+    && mkdir -p /etc/systemd/system/multi-user.target.wants \
+    && ln -sfn /etc/systemd/system/dead-rose-core.service /etc/systemd/system/multi-user.target.wants/dead-rose-core.service \
+    && ln -sfn /usr/lib/systemd/system/NetworkManager.service /etc/systemd/system/multi-user.target.wants/NetworkManager.service \
+    && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/multi-user.target.wants/greetd.service \
+    && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service \
     && test -s /etc/kairos-release
 
 STOPSIGNAL SIGRTMIN+3
