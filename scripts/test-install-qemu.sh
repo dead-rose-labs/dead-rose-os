@@ -40,7 +40,14 @@ command -v mkisofs >/dev/null 2>&1 || { printf 'mkisofs is required for the Kair
 command -v isoinfo >/dev/null
 
 config_dir=$(mktemp -d)
-trap 'rm -rf "${config_dir}"; if [[ -n "${install_pid:-}" ]]; then kill "${install_pid}" 2>/dev/null || true; fi' EXIT
+cleanup() {
+  if [[ -n "${qemu_pid:-}" ]]; then
+    kill "${qemu_pid}" 2>/dev/null || true
+    wait "${qemu_pid}" 2>/dev/null || true
+  fi
+  rm -rf "${config_dir}"
+}
+trap cleanup EXIT
 cp "${cloud_config}" "${config_dir}/user-data"
 : > "${config_dir}/meta-data"
 mkisofs -quiet -output "${config_drive}" -volid cidata -joliet -rock "${config_dir}/user-data" "${config_dir}/meta-data"
@@ -73,10 +80,10 @@ qemu-system-x86_64 -machine q35 -m 4096 -smp 2 "${acceleration[@]}" \
   -device virtio-vga -display none \
   -chardev "socket,id=deadrose_serial,path=${serial_socket},server=on,wait=off,logfile=${log}" \
   -serial chardev:deadrose_serial -no-reboot &
-install_pid=$!
+qemu_pid=$!
 
 deadline=$((SECONDS + 900))
-while kill -0 "${install_pid}" 2>/dev/null; do
+while kill -0 "${qemu_pid}" 2>/dev/null; do
   if (( SECONDS >= deadline )); then
     printf 'Timed out waiting for Kairos installation\n' >&2
     if ! python3 "${repo_root}/scripts/collect-qemu-diagnostics.py" "${serial_socket}" install; then
@@ -87,10 +94,16 @@ while kill -0 "${install_pid}" 2>/dev/null; do
   fi
   sleep 2
 done
-wait "${install_pid}"
+wait "${qemu_pid}"
+qemu_pid=""
+grep -Fq 'DEAD_ROSE_CI_HEADLESS' "${log}"
+if grep -Fq 'DEAD_ROSE_UI_READY' "${log}"; then
+  printf 'Graphical installer started during CI unattended installation\n' >&2
+  exit 1
+fi
 
 boot_installed() {
-  local expected=$1
+  local phase=$1
   local boot_log=$2
   rm -f "${boot_log}"
   qemu-system-x86_64 -machine q35 -m 4096 -smp 2 "${acceleration[@]}" \
@@ -98,25 +111,30 @@ boot_installed() {
     -drive "file=${disk},if=virtio,format=qcow2" \
     -boot c -nic user,model=virtio-net-pci \
     -device virtio-vga -display none -serial "file:${boot_log}" -no-reboot &
-  local boot_pid=$!
+  qemu_pid=$!
   local boot_deadline=$((SECONDS + 360))
-  while (( SECONDS < boot_deadline )); do
-    if [[ -f "${boot_log}" ]] && grep -Fq "${expected}" "${boot_log}"; then
-      kill "${boot_pid}"
-      wait "${boot_pid}" 2>/dev/null || true
-      return 0
-    fi
-    if ! kill -0 "${boot_pid}" 2>/dev/null; then
+  # The CI-only guest unit waits for UI readiness, commits/verifies state, then
+  # requests systemd poweroff. A readiness marker never terminates QEMU here.
+  while kill -0 "${qemu_pid}" 2>/dev/null; do
+    if (( SECONDS >= boot_deadline )); then
+      printf 'Timed out waiting for installed %s boot and clean shutdown\n' "${phase}" >&2
       tail -150 "${boot_log}" >&2 || true
       return 1
     fi
     sleep 2
   done
-  kill "${boot_pid}" 2>/dev/null || true
-  tail -150 "${boot_log}" >&2 || true
-  return 1
+  wait "${qemu_pid}"
+  qemu_pid=""
+  grep -Fq 'DEAD_ROSE_UI_READY mode=first_boot' "${boot_log}"
+  grep -Fq 'DEAD_ROSE_CI_SHUTDOWN_REQUESTED' "${boot_log}"
+  if [[ "${phase}" == first ]]; then
+    state_nonce=$(sed -nE 's/.*DEAD_ROSE_CI_STATE_WRITTEN nonce=([0-9a-f]{64}).*/\1/p' "${boot_log}" | tail -1)
+    [[ "${state_nonce}" =~ ^[0-9a-f]{64}$ ]]
+  else
+    grep -Fq "DEAD_ROSE_PERSISTENCE_OK nonce=${state_nonce}" "${boot_log}"
+  fi
 }
 
-boot_installed "DEAD_ROSE_UI_READY mode=first_boot" "${repo_root}/build/qemu-installed-first.log"
-boot_installed "DEAD_ROSE_PERSISTENCE_OK" "${repo_root}/build/qemu-installed-second.log"
+boot_installed first "${repo_root}/build/qemu-installed-first.log"
+boot_installed second "${repo_root}/build/qemu-installed-second.log"
 printf 'Installed boot and persistence checks passed\n'
