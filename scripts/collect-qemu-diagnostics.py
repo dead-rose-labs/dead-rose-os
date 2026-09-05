@@ -24,10 +24,46 @@ COMMAND = " ".join(
     )
 )
 
+# kairos-init v0.17.2: 00_datasource.yaml, 02_agent.yaml,
+# 09_systemd_services.yaml and 52_installer.yaml; agent v2.31.3 config get API.
+# Keep the live profile and nonce handshake unchanged. Never print full configs:
+# the install projection contains only the CI disk and lifecycle settings.
+INSTALL_UNITS = (
+    "kairos-installer.service kairos-agent.service kairos-webui.service "
+    "kairos-interactive.service cos-setup-fs.service cos-setup-boot.service "
+    "cos-setup-network.service"
+)
+INSTALL_COMMAND = " ".join(
+    (
+        "printf '\\nDEAD_ROSE_INSTALL_DIAGNOSTICS_BEGIN\\n';",
+        "cat /proc/cmdline;",
+        "lsblk -o NAME,PATH,TYPE,SIZE,FSTYPE,LABEL,MOUNTPOINTS; blkid;",
+        "ls -la /dev/disk/by-label /dev/sr* 2>&1; findmnt;",
+        "/usr/bin/kairos-agent --version;",
+        f"systemctl --no-pager --full status {INSTALL_UNITS};",
+        f"systemctl is-enabled {INSTALL_UNITS};",
+        f"systemctl --no-pager cat {INSTALL_UNITS};",
+        "journalctl -b --no-pager -o short-monotonic "
+        + " ".join(f"-u {unit}" for unit in INSTALL_UNITS.split()) + ";",
+        "journalctl -b --no-pager -t agent;",
+        "tail -300 /var/log/kairos/agent.log 2>&1;",
+        "ls -laR /run/cos; ls -l /run/.userdata_load 2>&1;",
+        "find /system/oem /run/initramfs/live /etc/kairos "
+        "/usr/local/cloud-config /oem -maxdepth 3 "
+        "-type f \\( -name '*.yaml' -o -name '*.yml' -o -name user-data \\) -print;",
+        "ls -la /oem/95_userdata 2>&1;",
+        "printf '\\nDEAD_ROSE_INSTALL_CONFIG_SAFE_FIELDS\\n';",
+        "timeout 10 /usr/bin/kairos-agent config get "
+        "'install | {device: .device, auto: .auto, bind_mounts: .bind_mounts, "
+        "reboot: .reboot, poweroff: .poweroff}';",
+        f"printf '\\n%s%s\\n' '{END_MARKER_PREFIX}' '{END_MARKER_NONCE}'",
+    )
+)
+
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: collect-qemu-diagnostics.py SERIAL_SOCKET", file=sys.stderr)
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "install"):
+        print("usage: collect-qemu-diagnostics.py SERIAL_SOCKET [install]", file=sys.stderr)
         return 2
 
     serial = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -45,7 +81,8 @@ def main() -> int:
 
     serial.sendall(b"\r")
     time.sleep(0.5)
-    serial.sendall(COMMAND.encode() + b"\r")
+    command = INSTALL_COMMAND if len(sys.argv) == 3 else COMMAND
+    serial.sendall(command.encode() + b"\r")
 
     received = bytearray()
     deadline = time.monotonic() + 20
