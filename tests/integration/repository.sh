@@ -12,10 +12,22 @@ source versions.env
 # shellcheck disable=SC2016
 grep -Fq 'ARG BASE_IMAGE=ubuntu:${UBUNTU_VERSION}' os/Dockerfile
 grep -Fq 'ARG UBUNTU_SNAPSHOT' os/Dockerfile
-# shellcheck disable=SC2016
-grep -Fq 'apt-get -o Acquire::Retries=3 --snapshot "${UBUNTU_SNAPSHOT}" update' os/Dockerfile
-# shellcheck disable=SC2016
-grep -Fq 'apt-get -o Acquire::Retries=3 --snapshot "${UBUNTU_SNAPSHOT}" install' os/Dockerfile
+grep -Fq 'apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 update' os/Dockerfile
+grep -Fq 'apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 install -y --no-install-recommends ca-certificates' os/Dockerfile
+grep -Fq 'test -s /etc/ssl/certs/ca-certificates.crt' os/Dockerfile
+grep -Fq '> /etc/apt/apt.conf.d/50-dead-rose-snapshot' os/Dockerfile
+grep -Fq 'APT::Snapshot "%s";' os/Dockerfile
+grep -Fq 'Acquire::Retries "5";' os/Dockerfile
+grep -Fq '&& apt-get update' os/Dockerfile
+grep -Fq '&& apt-get install -y --no-install-recommends' os/Dockerfile
+grep -Fq 'CA bootstrap PASS' os/Dockerfile
+grep -Fq 'snapshot.ubuntu.com access PASS' os/Dockerfile
+grep -Fq 'Ubuntu packages PASS' os/Dockerfile
+test "$(grep -Ec 'apt-get .*install .*ca-certificates|^[[:space:]]+ca-certificates systemd' os/Dockerfile)" = "2"
+if rg -n -- '--snapshot|Verify-Peer=false|curl -k|allow-insecure|trusted=yes' os/Dockerfile; then
+  echo 'The Ubuntu runtime must use authenticated global APT snapshot policy' >&2
+  exit 1
+fi
 # shellcheck disable=SC2016
 grep -Fq 'FROM ${BASE_IMAGE}' os/Dockerfile
 # shellcheck disable=SC2016

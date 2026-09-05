@@ -43,12 +43,20 @@ LABEL org.opencontainers.image.title="Dead Rose OS" \
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN test -n "${UBUNTU_SNAPSHOT}" \
-    && apt-get -o Acquire::Retries=3 --snapshot "${UBUNTU_SNAPSHOT}" update \
-    && apt-get -o Acquire::Retries=3 --snapshot "${UBUNTU_SNAPSHOT}" install -y --no-install-recommends \
+    && apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 update \
+    && apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 install -y --no-install-recommends ca-certificates \
+    && test -s /etc/ssl/certs/ca-certificates.crt \
+    && echo "CA bootstrap PASS" \
+    && printf 'APT::Snapshot "%s";\nAcquire::Retries "5";\n' "${UBUNTU_SNAPSHOT}" \
+        > /etc/apt/apt.conf.d/50-dead-rose-snapshot \
+    && apt-get update \
+    && echo "snapshot.ubuntu.com access PASS" \
+    && apt-get install -y --no-install-recommends \
     ca-certificates systemd systemd-sysv dbus dbus-user-session udev kmod util-linux iproute2 \
     network-manager greetd cage seatd \
     libwebkit2gtk-4.1-0 librsvg2-2 \
     libegl-mesa0 libgl1-mesa-dri mesa-vulkan-drivers \
+    && echo "Ubuntu packages PASS" \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
     && groupadd --system deadrose \
