@@ -20,7 +20,6 @@ jobs:
     outputs:
       version: ${{ steps.metadata.outputs.version }}
       ubuntu_version: ${{ steps.metadata.outputs.ubuntu_version }}
-      ubuntu_snapshot: ${{ steps.metadata.outputs.ubuntu_snapshot }}
       kairos_init_version: ${{ steps.metadata.outputs.kairos_init_version }}
       auroraboot_version: ${{ steps.metadata.outputs.auroraboot_version }}
       rust_version: ${{ steps.metadata.outputs.rust_version }}
@@ -37,13 +36,11 @@ jobs:
           project_version=$(tr -d '[:space:]' < VERSION)
           [[ "$GITHUB_REF_NAME" == "v${project_version}" ]]
           [[ "$UBUNTU_VERSION" == "26.04" ]]
-          [[ "$UBUNTU_SNAPSHOT" =~ ^[0-9]{8}T[0-9]{6}Z$ ]]
           [[ "$KAIROS_INIT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$AURORABOOT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           {
             echo "version=${GITHUB_REF_NAME}"
             echo "ubuntu_version=${UBUNTU_VERSION}"
-            echo "ubuntu_snapshot=${UBUNTU_SNAPSHOT}"
             echo "kairos_init_version=${KAIROS_INIT_VERSION}"
             echo "auroraboot_version=${AURORABOOT_VERSION}"
             echo "rust_version=${RUST_VERSION}"
@@ -77,7 +74,6 @@ jobs:
       cloud_config: os/cloud-config/default.yaml
       build_args: |
         UBUNTU_VERSION=${{ needs.metadata.outputs.ubuntu_version }}
-        UBUNTU_SNAPSHOT=${{ needs.metadata.outputs.ubuntu_snapshot }}
         KAIROS_INIT_VERSION=${{ needs.metadata.outputs.kairos_init_version }}
         RUST_VERSION=${{ needs.metadata.outputs.rust_version }}
         NODE_VERSION=${{ needs.metadata.outputs.node_version }}
@@ -208,7 +204,6 @@ jobs:
             echo '## Dead Rose OS Release'
             echo
             echo '- Version: `${{ needs.metadata.outputs.version }}`'
-            echo '- Ubuntu snapshot: `${{ needs.metadata.outputs.ubuntu_snapshot }}`'
             echo '- Factory candidate: `ghcr.io/dead-rose-labs/dead-rose-os:candidate-${{ github.sha }}`'
             echo '- Production OCI: `ghcr.io/dead-rose-labs/dead-rose-os:${{ needs.metadata.outputs.version }}`'
             echo '- Tested ISO published without rebuilding.'

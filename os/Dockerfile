@@ -35,28 +35,18 @@ FROM quay.io/kairos/kairos-init:${KAIROS_INIT_VERSION} AS kairos-init
 FROM ${BASE_IMAGE}
 ARG VERSION=0.1.0
 ARG TARGETARCH=amd64
-ARG UBUNTU_SNAPSHOT
 LABEL org.opencontainers.image.title="Dead Rose OS" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.source="https://github.com/dead-rose-labs/dead-rose-os" \
-      io.dead-rose.ubuntu.snapshot="${UBUNTU_SNAPSHOT}"
+      org.opencontainers.image.source="https://github.com/dead-rose-labs/dead-rose-os"
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN test -n "${UBUNTU_SNAPSHOT}" \
-    && apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 update \
-    && apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 install -y --no-install-recommends ca-certificates \
-    && test -s /etc/ssl/certs/ca-certificates.crt \
-    && echo "CA bootstrap PASS" \
-    && printf 'APT::Snapshot "%s";\nAcquire::Retries "5";\n' "${UBUNTU_SNAPSHOT}" \
-        > /etc/apt/apt.conf.d/50-dead-rose-snapshot \
+RUN printf 'Acquire::Retries "5";\n' > /etc/apt/apt.conf.d/80-dead-rose-retries \
     && apt-get update \
-    && echo "snapshot.ubuntu.com access PASS" \
     && apt-get install -y --no-install-recommends \
     ca-certificates systemd systemd-sysv dbus dbus-user-session udev kmod util-linux iproute2 \
     network-manager greetd cage seatd \
     libwebkit2gtk-4.1-0 librsvg2-2 \
     libegl-mesa0 libgl1-mesa-dri mesa-vulkan-drivers \
-    && echo "Ubuntu packages PASS" \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
     && groupadd --system deadrose \
@@ -68,20 +58,22 @@ COPY --from=rust-builder /src/target/release/dead-rose-core /opt/dead-rose/bin/d
 COPY --from=rust-builder /src/target/release/dead-rose-shell /opt/dead-rose/bin/dead-rose-shell
 COPY os/rootfs/ /
 
+RUN --mount=type=bind,from=kairos-init,src=/kairos-init,dst=/kairos-init \
+    /kairos-init -l debug --model generic --version "${VERSION}"
+
+RUN test -s /etc/kairos-release
+
 # Kairos selects multi-user.target during its live initramfs stage. Keep
 # graphical.target canonical for normal systemd boots, while attaching the
 # same greetd unit to Kairos' appliance boot target as well.
-RUN --mount=type=bind,from=kairos-init,src=/kairos-init,dst=/kairos-init \
-    /kairos-init -l debug --model generic --version "${VERSION}" \
-    && chmod 0755 /opt/dead-rose/bin/dead-rose-core /opt/dead-rose/bin/dead-rose-shell \
+RUN chmod 0755 /opt/dead-rose/bin/dead-rose-core /opt/dead-rose/bin/dead-rose-shell \
     && mkdir -p /etc/systemd/system/multi-user.target.wants /etc/systemd/system/graphical.target.wants \
     && ln -sfn /etc/systemd/system/dead-rose-core.service /etc/systemd/system/multi-user.target.wants/dead-rose-core.service \
     && ln -sfn /usr/lib/systemd/system/NetworkManager.service /etc/systemd/system/multi-user.target.wants/NetworkManager.service \
     && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/multi-user.target.wants/greetd.service \
     && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/graphical.target.wants/greetd.service \
     && ln -sfn /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service \
-    && ln -sfn /usr/lib/systemd/system/graphical.target /etc/systemd/system/default.target \
-    && test -s /etc/kairos-release
+    && ln -sfn /usr/lib/systemd/system/graphical.target /etc/systemd/system/default.target
 
 RUN --mount=type=bind,source=tests/integration/image-sanity.sh,target=/tmp/image-sanity.sh,readonly \
     /bin/bash /tmp/image-sanity.sh

@@ -20,7 +20,6 @@ fi
   --load \
   --build-arg "BASE_IMAGE=ubuntu:${UBUNTU_VERSION}" \
   --build-arg "UBUNTU_VERSION=${UBUNTU_VERSION}" \
-  --build-arg "UBUNTU_SNAPSHOT=${UBUNTU_SNAPSHOT}" \
   --build-arg "KAIROS_INIT_VERSION=${KAIROS_INIT_VERSION}" \
   --build-arg "RUST_VERSION=${RUST_VERSION}" \
   --build-arg "NODE_VERSION=${NODE_VERSION}" \

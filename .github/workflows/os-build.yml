@@ -29,7 +29,6 @@ jobs:
     outputs:
       version: ${{ steps.metadata.outputs.version }}
       ubuntu_version: ${{ steps.metadata.outputs.ubuntu_version }}
-      ubuntu_snapshot: ${{ steps.metadata.outputs.ubuntu_snapshot }}
       kairos_init_version: ${{ steps.metadata.outputs.kairos_init_version }}
       auroraboot_version: ${{ steps.metadata.outputs.auroraboot_version }}
       rust_version: ${{ steps.metadata.outputs.rust_version }}
@@ -46,14 +45,12 @@ jobs:
           project_version=$(tr -d '[:space:]' < VERSION)
           [[ "$project_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$UBUNTU_VERSION" == "26.04" ]]
-          [[ "$UBUNTU_SNAPSHOT" =~ ^[0-9]{8}T[0-9]{6}Z$ ]]
           [[ "$KAIROS_INIT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$AURORABOOT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           short_sha=${GITHUB_SHA:0:12}
           {
             echo "version=${project_version}-dev.${short_sha}"
             echo "ubuntu_version=${UBUNTU_VERSION}"
-            echo "ubuntu_snapshot=${UBUNTU_SNAPSHOT}"
             echo "kairos_init_version=${KAIROS_INIT_VERSION}"
             echo "auroraboot_version=${AURORABOOT_VERSION}"
             echo "rust_version=${RUST_VERSION}"
@@ -88,7 +85,6 @@ jobs:
       cloud_config: os/cloud-config/default.yaml
       build_args: |
         UBUNTU_VERSION=${{ needs.metadata.outputs.ubuntu_version }}
-        UBUNTU_SNAPSHOT=${{ needs.metadata.outputs.ubuntu_snapshot }}
         KAIROS_INIT_VERSION=${{ needs.metadata.outputs.kairos_init_version }}
         RUST_VERSION=${{ needs.metadata.outputs.rust_version }}
         NODE_VERSION=${{ needs.metadata.outputs.node_version }}
@@ -190,7 +186,6 @@ jobs:
             echo '- Version: `${{ needs.metadata.outputs.version }}`'
             echo '- Git SHA: `${{ github.sha }}`'
             echo '- Ubuntu: `26.04`'
-            echo '- Ubuntu snapshot: `${{ needs.metadata.outputs.ubuntu_snapshot }}`'
             echo '- Kairos Factory: `911d4e3fef31ba9bf85923fc846470a0a3d68e2b`'
             echo '- kairos-init: `${{ needs.metadata.outputs.kairos_init_version }}`'
             echo '- AuroraBoot: `${{ needs.metadata.outputs.auroraboot_version }}`'

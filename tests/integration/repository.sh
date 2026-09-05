@@ -5,35 +5,20 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "${repo_root}"
 
 test "$(tr -d '[:space:]' < VERSION)" = "0.1.0"
-# shellcheck source=versions.env disable=SC1091
-source versions.env
-[[ "$UBUNTU_SNAPSHOT" =~ ^[0-9]{8}T[0-9]{6}Z$ ]]
 # These are literal Dockerfile ARG references, not shell expansions.
 # shellcheck disable=SC2016
 grep -Fq 'ARG BASE_IMAGE=ubuntu:${UBUNTU_VERSION}' os/Dockerfile
-grep -Fq 'ARG UBUNTU_SNAPSHOT' os/Dockerfile
-grep -Fq 'apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 update' os/Dockerfile
-grep -Fq 'apt-get -o Acquire::By-Hash=force -o Acquire::Retries=5 install -y --no-install-recommends ca-certificates' os/Dockerfile
-grep -Fq 'test -s /etc/ssl/certs/ca-certificates.crt' os/Dockerfile
-grep -Fq '> /etc/apt/apt.conf.d/50-dead-rose-snapshot' os/Dockerfile
-grep -Fq 'APT::Snapshot "%s";' os/Dockerfile
+grep -Fq '> /etc/apt/apt.conf.d/80-dead-rose-retries' os/Dockerfile
 grep -Fq 'Acquire::Retries "5";' os/Dockerfile
-grep -Fq '&& apt-get update' os/Dockerfile
-grep -Fq '&& apt-get install -y --no-install-recommends' os/Dockerfile
-grep -Fq 'CA bootstrap PASS' os/Dockerfile
-grep -Fq 'snapshot.ubuntu.com access PASS' os/Dockerfile
-grep -Fq 'Ubuntu packages PASS' os/Dockerfile
-test "$(grep -Ec 'apt-get .*install .*ca-certificates|^[[:space:]]+ca-certificates systemd' os/Dockerfile)" = "2"
-if rg -n -- '--snapshot|Verify-Peer=false|curl -k|allow-insecure|trusted=yes' os/Dockerfile; then
-  echo 'The Ubuntu runtime must use authenticated global APT snapshot policy' >&2
-  exit 1
-fi
+grep -Fq 'apt-get update' os/Dockerfile
+grep -Fq 'apt-get install -y --no-install-recommends' os/Dockerfile
 # shellcheck disable=SC2016
 grep -Fq 'FROM ${BASE_IMAGE}' os/Dockerfile
 # shellcheck disable=SC2016
 grep -Fq 'kairos-init:${KAIROS_INIT_VERSION}' os/Dockerfile
 # shellcheck disable=SC2016
 grep -Fq '/kairos-init -l debug --model generic --version "${VERSION}"' os/Dockerfile
+grep -Fq 'RUN test -s /etc/kairos-release' os/Dockerfile
 grep -Fq 'source=tests/integration/image-sanity.sh' os/Dockerfile
 if grep -Eq '/kairos-init .* -s (install|init)' os/Dockerfile; then
   echo 'kairos-init must run its complete default transformation, not a partial stage' >&2
@@ -58,8 +43,6 @@ grep -Fq 'kairos-io/kairos/.github/workflows/reusable-factory.yaml@911d4e3fef31b
 grep -Fq 'dockerfile_path: os/Dockerfile' .github/workflows/os-build.yml
 grep -Fq 'base_image: ubuntu:26.04' .github/workflows/os-build.yml
 grep -Fq 'cloud_config: os/cloud-config/default.yaml' .github/workflows/os-build.yml
-# shellcheck disable=SC2016
-grep -Fq 'UBUNTU_SNAPSHOT=${{ needs.metadata.outputs.ubuntu_snapshot }}' .github/workflows/os-build.yml
 grep -Fq 'grype: false' .github/workflows/os-build.yml
 grep -Fq 'uses: ./.github/workflows/grype-report.yml' .github/workflows/os-build.yml
 grep -Fq 'anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439' .github/workflows/grype-report.yml

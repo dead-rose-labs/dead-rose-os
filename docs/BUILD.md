@@ -9,7 +9,7 @@ Run `./dr doctor` first. A complete appliance build requires Docker with buildx.
 ./dr iso         # production AuroraBoot ISO and checksum
 ```
 
-All lifecycle tool versions and the Canonical Ubuntu archive snapshot are centralized in `versions.env`. The Ubuntu OS package layer first bootstraps only `ca-certificates` from the authenticated official archive with APT's by-hash enforcement and bounded retries. It then installs the unchanged runtime package set under a global pinned `APT::Snapshot` policy. The Debian-based Rust builder remains independent from this Ubuntu policy. The image is transformed with `kairos-init`; the ISO is emitted directly by AuroraBoot and is never patched afterward.
+All lifecycle tool versions are centralized in `versions.env`. The Ubuntu OS package layer uses the standard authenticated repositories from the official base image and APT's native `Acquire::Retries=5` policy. The image is transformed with the directly invoked pinned `kairos-init`; the ISO is emitted directly by AuroraBoot and is never patched afterward.
 
 ## GitHub builds
 
