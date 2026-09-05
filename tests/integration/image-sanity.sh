@@ -53,6 +53,6 @@ test -s /etc/default/locale
 . /etc/default/locale
 test "${LANG}" = C.UTF-8
 LANG="${LANG}" locale charmap | grep -Fxq UTF-8
-grep -Fq 'Conflicts=getty@tty1.service' /etc/systemd/system/greetd.service.d/dead-rose.conf
+grep -Fq 'Conflicts=getty@tty7.service' /etc/systemd/system/greetd.service.d/dead-rose.conf
 awk -F: '$2 !~ /^(!|\*)/ { exit 1 }' /etc/shadow
 ! dpkg-query -W ubuntu-desktop gdm3 2>/dev/null
