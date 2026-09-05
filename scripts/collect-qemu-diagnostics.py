@@ -14,6 +14,7 @@ COMMAND = " ".join(
         "printf '\\nDEAD_ROSE_DIAGNOSTICS_BEGIN\\n';",
         "systemctl --no-pager --full status dead-rose-core.service greetd.service;",
         "journalctl -b --no-pager -n 200 -u dead-rose-core.service -u greetd.service;",
+        "journalctl -b -t dead-rose-session --no-pager -n 300;",
         "ls -la /dev/dri /run/dead-rose 2>&1;",
         "ps -ef | grep -E 'dead-rose|greetd|cage' | grep -v grep;",
         f"printf '\\n{END_MARKER}\\n'",

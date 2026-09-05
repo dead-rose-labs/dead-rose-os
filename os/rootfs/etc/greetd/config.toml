@@ -3,7 +3,7 @@ vt = 1
 switch = true
 
 [initial_session]
-command = "/usr/bin/cage -- /opt/dead-rose/bin/dead-rose-shell"
+command = "/usr/bin/systemd-cat --identifier=dead-rose-session --priority=info --stderr-priority=err --level-prefix=false -- /usr/bin/cage -- /opt/dead-rose/bin/dead-rose-shell"
 user = "deadrose"
 
 [default_session]
