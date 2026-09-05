@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-# shellcheck source=versions.env
+# shellcheck source=versions.env disable=SC1091
 source "${repo_root}/versions.env"
 version=$(tr -d '[:space:]' < "${repo_root}/VERSION")
 
@@ -20,6 +20,7 @@ fi
   --load \
   --build-arg "BASE_IMAGE=ubuntu:${UBUNTU_VERSION}" \
   --build-arg "UBUNTU_VERSION=${UBUNTU_VERSION}" \
+  --build-arg "UBUNTU_SNAPSHOT=${UBUNTU_SNAPSHOT}" \
   --build-arg "KAIROS_INIT_VERSION=${KAIROS_INIT_VERSION}" \
   --build-arg "RUST_VERSION=${RUST_VERSION}" \
   --build-arg "NODE_VERSION=${NODE_VERSION}" \

@@ -35,12 +35,16 @@ FROM quay.io/kairos/kairos-init:${KAIROS_INIT_VERSION} AS kairos-init
 FROM ${BASE_IMAGE}
 ARG VERSION=0.1.0
 ARG TARGETARCH=amd64
+ARG UBUNTU_SNAPSHOT
 LABEL org.opencontainers.image.title="Dead Rose OS" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.source="https://github.com/dead-rose-labs/dead-rose-os"
+      org.opencontainers.image.source="https://github.com/dead-rose-labs/dead-rose-os" \
+      io.dead-rose.ubuntu.snapshot="${UBUNTU_SNAPSHOT}"
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN test -n "${UBUNTU_SNAPSHOT}" \
+    && apt-get -o Acquire::Retries=3 --snapshot "${UBUNTU_SNAPSHOT}" update \
+    && apt-get -o Acquire::Retries=3 --snapshot "${UBUNTU_SNAPSHOT}" install -y --no-install-recommends \
     ca-certificates systemd systemd-sysv dbus dbus-user-session udev kmod util-linux iproute2 \
     network-manager greetd cage seatd \
     libwebkit2gtk-4.1-0 librsvg2-2 \
