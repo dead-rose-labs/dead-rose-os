@@ -53,7 +53,11 @@ def main() -> int:
         if not chunk:
             break
         received.extend(chunk)
-        if END_MARKER.encode() in received:
+        # The interactive shell first echoes the command itself, which already
+        # contains END_MARKER. The second occurrence is the marker printed only
+        # after every diagnostic command has completed.
+        if received.count(END_MARKER.encode()) >= 2:
+            time.sleep(0.5)
             return 0
 
     print("Guest diagnostics did not complete", file=sys.stderr)
