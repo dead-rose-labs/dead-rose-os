@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import secrets
 import socket
 import sys
 import time
 
 
-END_MARKER = "DEAD_ROSE_DIAGNOSTICS_END"
+END_MARKER_PREFIX = "DEAD_ROSE_DIAGNOSTICS_END_"
+END_MARKER_NONCE = secrets.token_hex(16)
+END_MARKER = END_MARKER_PREFIX + END_MARKER_NONCE
 COMMAND = " ".join(
     (
         "printf '\\nDEAD_ROSE_DIAGNOSTICS_BEGIN\\n';",
@@ -17,7 +20,7 @@ COMMAND = " ".join(
         "journalctl -b -t dead-rose-session --no-pager -n 300;",
         "ls -la /dev/dri /run/dead-rose 2>&1;",
         "ps -ef | grep -E 'dead-rose|greetd|cage' | grep -v grep;",
-        f"printf '\\n{END_MARKER}\\n'",
+        f"printf '\\n%s%s\\n' '{END_MARKER_PREFIX}' '{END_MARKER_NONCE}'",
     )
 )
 
@@ -54,10 +57,9 @@ def main() -> int:
         if not chunk:
             break
         received.extend(chunk)
-        # The interactive shell first echoes the command itself, which already
-        # contains END_MARKER. The second occurrence is the marker printed only
-        # after every diagnostic command has completed.
-        if received.count(END_MARKER.encode()) >= 2:
+        # The complete nonce marker is absent from the echoed command and only
+        # appears after every diagnostic command has completed.
+        if END_MARKER.encode() in received:
             time.sleep(0.5)
             return 0
 
