@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Box,
@@ -28,7 +28,8 @@ import {
 } from "@dead-rose/ui";
 import { coreRequest, session } from "./api";
 import { formatBytes } from "./format";
-import type { ApplicationState, InstallDisk, OperationStatus, SystemInfo } from "./types";
+import "./installer.css";
+import type { Acknowledgement, ApplicationState, InstallDisk, OperationStatus, SystemInfo } from "./types";
 
 const SESSION_TOKEN = () => session.get();
 
@@ -101,6 +102,7 @@ function Installer({ systemInfo }: { systemInfo: SystemInfo | null }) {
   const [error, setError] = useState<string | null>(null);
   const [loadingDisks, setLoadingDisks] = useState(false);
   const [installPending, setInstallPending] = useState(false);
+  const installSubmitted = useRef(false);
 
   const loadDisks = useCallback(async () => {
     setLoadingDisks(true); setError(null);
@@ -131,20 +133,25 @@ function Installer({ systemInfo }: { systemInfo: SystemInfo | null }) {
 
   const target = disks.find((disk) => disk.device === selected);
   const startInstall = async () => {
-    if (installPending) return;
+    if (installSubmitted.current) return;
+    installSubmitted.current = true;
     setInstallPending(true);
     setError(null);
     try {
-      await coreRequest("start_install", { device: selected, confirmation });
+      const acknowledgement = await coreRequest<Acknowledgement>("start_install", { device: selected, confirmation });
+      if (!acknowledgement.accepted) throw new Error("Installation was not accepted");
       setStatus({ phase: "preparing", detail: "Preparing installation", error: null });
       setStep("installing");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Installation could not start"); }
-    finally { setInstallPending(false); }
+    } catch (reason) {
+      installSubmitted.current = false;
+      setInstallPending(false);
+      setError(reason instanceof Error ? reason.message : "Installation could not start");
+    }
   };
 
   return (
-    <main className="grid min-h-screen grid-cols-[minmax(280px,34%)_1fr] bg-background">
-      <aside className="flex flex-col justify-between border-r border-border bg-card p-10">
+    <main className="installer bg-background">
+      <aside className="installer-sidebar flex flex-col justify-between border-r border-border bg-card">
         <BrandLockup />
         <div>
           <p className="max-w-sm text-3xl font-semibold leading-[1.15] tracking-[-0.03em]">A clean start for your control plane.</p>
@@ -155,17 +162,17 @@ function Installer({ systemInfo }: { systemInfo: SystemInfo | null }) {
           <StatusIndicator label="Installation media" tone="healthy" />
         </div>
       </aside>
-      <section className="flex min-w-0 flex-col">
-        <header className="flex h-14 items-center justify-between border-b border-border px-8">
+      <section className="installer-main flex min-w-0 flex-col">
+        <header className="installer-header flex min-h-14 shrink-0 items-center justify-between gap-4 border-b border-border">
           <span className="text-[13px] font-medium">{installerTitle(step)}</span>
           <span className="font-mono text-xs text-muted-foreground">{installerStep(step)}</span>
         </header>
-        <div className="flex flex-1 items-center justify-center overflow-y-auto p-8">
-          <div className="w-full max-w-2xl">
+        <div className="installer-scroll">
+          <div className="installer-content w-full max-w-2xl">
             {step === "welcome" && <Welcome onContinue={() => setStep("disk")} />}
             {step === "disk" && <DiskSelection disks={disks} selected={selected} setSelected={setSelected} loading={loadingDisks} error={error} retry={loadDisks} onContinue={() => setStep("review")} />}
             {step === "review" && target && <InstallReview disk={target} confirmation={confirmation} setConfirmation={setConfirmation} error={error} pending={installPending} back={() => setStep("disk")} start={startInstall} />}
-            {step === "installing" && status && <Installing status={status} pollingError={error} retry={() => { setError(null); setConfirmation(""); setStep("disk"); }} />}
+            {step === "installing" && status && <Installing status={status} pollingError={error} retry={() => { if (status.phase === "failed") { installSubmitted.current = false; setInstallPending(false); } setError(null); setConfirmation(""); setStep("disk"); }} />}
             {step === "complete" && <InstallComplete reboot={() => coreRequest("reboot", { session_token: null })} />}
           </div>
         </div>
@@ -191,10 +198,10 @@ function DiskSelection({ disks, selected, setSelected, loading, error, retry, on
 
 function InstallReview({ disk, confirmation, setConfirmation, error, pending, back, start }: { disk: InstallDisk; confirmation: string; setConfirmation: (value: string) => void; error: string | null; pending: boolean; back: () => void; start: () => Promise<void> }) {
   return (
-    <div><h1 className="text-2xl font-semibold tracking-[-0.02em]">Review installation</h1><div className="mt-6 rounded-lg border border-border bg-card"><dl className="grid grid-cols-[160px_1fr] gap-y-3 p-5"><dt className="text-muted-foreground">Disk</dt><dd>{disk.model}</dd><dt className="text-muted-foreground">Device</dt><dd className="font-mono">{disk.device}</dd><dt className="text-muted-foreground">Capacity</dt><dd className="font-mono">{formatBytes(disk.size_bytes)}</dd></dl></div>
+    <div><h1 className="text-2xl font-semibold tracking-[-0.02em]">Review installation</h1><div className="mt-6 rounded-lg border border-border bg-card"><dl className="installer-facts grid gap-y-3 p-5"><dt className="text-muted-foreground">Disk</dt><dd>{disk.model}</dd><dt className="text-muted-foreground">Device</dt><dd className="font-mono">{disk.device}</dd><dt className="text-muted-foreground">Capacity</dt><dd className="font-mono">{formatBytes(disk.size_bytes)}</dd></dl></div>
       <div className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-5"><p className="font-semibold text-destructive">ALL DATA ON THIS DISK WILL BE ERASED</p><p className="mt-2 text-[13px] leading-5 text-muted-foreground">This cannot be undone. Type <span className="font-mono text-foreground">ERASE</span> to confirm the exact disk above.</p></div>
       <FieldGroup className="mt-5"><Field data-invalid={Boolean(error)}><FieldLabel htmlFor="erase-confirmation">Confirmation</FieldLabel><Input id="erase-confirmation" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" spellCheck={false} aria-invalid={Boolean(error)} className="font-mono" />{error && <FieldError>{error}</FieldError>}</Field></FieldGroup>
-      <div className="mt-8 flex justify-between"><Button variant="ghost" disabled={pending} onClick={back}>Back</Button><Button variant="destructive" disabled={confirmation !== "ERASE" || pending} onClick={() => void start()}>{pending && <LoaderCircle data-icon="inline-start" className="animate-spin" />}Erase disk and install</Button></div>
+      <div className="installer-actions mt-8 flex justify-between"><Button variant="ghost" disabled={pending} onClick={back}>Back</Button><Button variant="destructive" disabled={confirmation !== "ERASE" || pending} onClick={() => void start()}>{pending && <LoaderCircle data-icon="inline-start" className="animate-spin" />}Erase disk and install</Button></div>
     </div>
   );
 }

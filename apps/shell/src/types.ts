@@ -1,3 +1,7 @@
+export interface Acknowledgement {
+  accepted: boolean;
+}
+
 export type ApplicationState = "live_installer" | "first_boot" | "login" | "dashboard";
 export type BootMode = "live" | "installed";
 

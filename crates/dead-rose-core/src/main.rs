@@ -4,8 +4,8 @@ mod state;
 
 use chrono::Utc;
 use dead_rose_types::{
-    ApplicationState, BootMode, CORE_SOCKET_PATH, Request, RequestEnvelope, ResponseEnvelope,
-    STATE_DIRECTORY, SystemInfo,
+    Acknowledgement, ApplicationState, BootMode, CORE_SOCKET_PATH, Request, RequestEnvelope,
+    ResponseEnvelope, STATE_DIRECTORY, SystemInfo,
 };
 use operations::OperationManager;
 use state::StateStore;
@@ -118,6 +118,17 @@ fn handle_connection(core: &Core, mut stream: UnixStream) {
 }
 
 fn dispatch(core: &Core, envelope: RequestEnvelope) -> ResponseEnvelope {
+    dispatch_with_install(core, envelope, |device, confirmation| {
+        start_install(core, device, confirmation)
+    })
+}
+
+// Keep command execution outside the response-contract test.
+fn dispatch_with_install(
+    core: &Core,
+    envelope: RequestEnvelope,
+    install: impl FnOnce(&str, &str) -> Result<(), (String, String, String)>,
+) -> ResponseEnvelope {
     let id = envelope.id;
     let result: Result<serde_json::Value, (String, String, String)> = match envelope.request {
         Request::GetSystemInfo => system_info().and_then(to_value),
@@ -128,7 +139,7 @@ fn dispatch(core: &Core, envelope: RequestEnvelope) -> ResponseEnvelope {
         Request::StartInstall {
             device,
             confirmation,
-        } => start_install(core, &device, &confirmation).and_then(to_value),
+        } => install(&device, &confirmation).and_then(acknowledge),
         Request::GetInstallStatus => to_value(core.operations.install_status()),
         Request::GetCurrentVersion => to_value(env!("CARGO_PKG_VERSION")),
         Request::StartUpgrade {
@@ -144,7 +155,7 @@ fn dispatch(core: &Core, envelope: RequestEnvelope) -> ResponseEnvelope {
         Request::GetUpgradeStatus => to_value(core.operations.upgrade_status()),
         Request::Reboot { session_token } => authorize_power(core, session_token.as_deref())
             .and_then(|_| system_action("reboot"))
-            .and_then(to_value),
+            .and_then(acknowledge),
         Request::PowerOff { session_token } => authorize_power(core, session_token.as_deref())
             .and_then(|_| system_action("poweroff"))
             .and_then(to_value),
@@ -165,7 +176,7 @@ fn dispatch(core: &Core, envelope: RequestEnvelope) -> ResponseEnvelope {
                     .unwrap_or_else(|poisoned| poisoned.into_inner())
                     .create_admin(&username, &password)
                     .map_err(component_error("authentication"))
-                    .and_then(to_value)
+                    .and_then(acknowledge)
             }
         }
         Request::Login { username, password } => {
@@ -177,7 +188,7 @@ fn dispatch(core: &Core, envelope: RequestEnvelope) -> ResponseEnvelope {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .logout(&session_token)
             .map_err(component_error("authentication"))
-            .and_then(to_value),
+            .and_then(acknowledge),
     };
     match result {
         Ok(value) => ResponseEnvelope::success(id, value),
@@ -429,6 +440,10 @@ fn os_release_value(key: &str) -> Option<String> {
         })
 }
 
+fn acknowledge((): ()) -> Result<serde_json::Value, (String, String, String)> {
+    to_value(Acknowledgement { accepted: true })
+}
+
 fn to_value<T: serde::Serialize>(value: T) -> Result<serde_json::Value, (String, String, String)> {
     serde_json::to_value(value).map_err(component_error("dead-rose-ipc"))
 }
@@ -451,6 +466,50 @@ fn api_error(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn start_install_returns_non_null_acknowledgement_without_running_installer() {
+        let directory = tempfile::tempdir().unwrap();
+        let core = Core {
+            boot_mode: BootMode::Live,
+            state: Mutex::new(StateStore::open(&directory.path().join("state.db")).unwrap()),
+            operations: OperationManager::new(directory.path().join("logs")),
+            login_attempts: Mutex::new(HashMap::new()),
+        };
+        for accepted in [true, false] {
+            let mut calls = 0;
+            let response = dispatch_with_install(
+                &core,
+                RequestEnvelope {
+                    id: "install-test".into(),
+                    request: Request::StartInstall {
+                        device: "/dev/test-only".into(),
+                        confirmation: "ERASE".into(),
+                    },
+                },
+                |device, confirmation| {
+                    calls += 1;
+                    assert_eq!(device, "/dev/test-only");
+                    assert_eq!(confirmation, "ERASE");
+                    if accepted {
+                        Ok(())
+                    } else {
+                        Err(api_error("operation_failed", "busy", "installer"))
+                    }
+                },
+            );
+            assert_eq!(calls, 1);
+            let wire = serde_json::to_value(response).unwrap();
+            assert_eq!(wire["ok"], accepted);
+            if accepted {
+                assert_eq!(wire["result"], json!({"accepted": true}));
+                assert!(!wire["result"].is_null());
+            } else {
+                assert!(wire["result"].is_null());
+                assert_eq!(wire["error"]["message"], "busy");
+            }
+        }
+    }
 
     #[test]
     fn boot_mode_can_be_forced_for_tests() {

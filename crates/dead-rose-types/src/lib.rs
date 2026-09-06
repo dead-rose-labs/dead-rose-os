@@ -4,6 +4,12 @@ use serde_json::Value;
 pub const CORE_SOCKET_PATH: &str = "/run/dead-rose/core.sock";
 pub const STATE_DIRECTORY: &str = "/var/lib/dead-rose";
 
+/// Confirms a command was accepted; asynchronous completion is reported by status requests.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Acknowledgement {
+    pub accepted: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BootMode {
