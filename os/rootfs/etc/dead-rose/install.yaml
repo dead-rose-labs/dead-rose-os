@@ -1,5 +1,12 @@
 #cloud-config
 install:
+  # Kairos filesystem image sizes in MiB, shared by manual and automatic install.
+  system:
+    size: 5120
+  passive:
+    size: 5120
+  recovery-system:
+    size: 5120
   bind_mounts:
     - /var/lib/dead-rose
   reboot: false
