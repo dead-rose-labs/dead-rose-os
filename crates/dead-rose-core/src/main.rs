@@ -1,4 +1,5 @@
 mod disks;
+mod installer_log;
 mod operations;
 mod state;
 
@@ -140,6 +141,13 @@ fn dispatch_with_install(
             device,
             confirmation,
         } => install(&device, &confirmation).and_then(acknowledge),
+        Request::GetInstallLog => require_live(core)
+            .and_then(|_| {
+                core.operations
+                    .install_log()
+                    .map_err(component_error("installer_log"))
+            })
+            .and_then(to_value),
         Request::GetInstallStatus => to_value(core.operations.install_status()),
         Request::GetCurrentVersion => to_value(env!("CARGO_PKG_VERSION")),
         Request::StartUpgrade {

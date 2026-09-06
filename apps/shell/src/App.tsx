@@ -29,6 +29,7 @@ import {
 import { coreRequest, session } from "./api";
 import { formatBytes } from "./format";
 import "./installer.css";
+import { InstallationLog } from "./InstallationLog";
 import type { Acknowledgement, ApplicationState, InstallDisk, OperationStatus, SystemInfo } from "./types";
 
 const SESSION_TOKEN = () => session.get();
@@ -209,7 +210,7 @@ function InstallReview({ disk, confirmation, setConfirmation, error, pending, ba
 function Installing({ status, pollingError, retry }: { status: OperationStatus; pollingError: string | null; retry: () => void }) {
   const failed = status.phase === "failed" || Boolean(pollingError);
   const failure = pollingError ?? status.error;
-  return <div aria-live="polite"><h1 className="text-2xl font-semibold tracking-[-0.02em]">{failed ? "Installation status unavailable" : "Installing Dead Rose OS"}</h1><p className="mt-2 text-muted-foreground">{failed ? "The installer stopped receiving authoritative progress from Dead Rose Core." : status.detail}</p><div className="mt-8">{!failed && <Progress />}</div>{failure && <p role="alert" className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-[13px] leading-5">{failure}</p>}{failed && <Button className="mt-6" variant="outline" onClick={retry}>Recheck disks</Button>}<p className="mt-6 text-xs text-muted-foreground">Do not power off the system while installation is running. Detailed logs are preserved for diagnostics.</p></div>;
+  return <div aria-live="polite"><h1 className="text-2xl font-semibold tracking-[-0.02em]">{status.phase === "failed" ? "Installation failed" : failed ? "Installation status unavailable" : "Installing Dead Rose OS"}</h1><p className="mt-2 text-muted-foreground">{status.phase === "failed" ? "The installation did not complete. Expand the log below for details." : failed ? "The installer stopped receiving authoritative progress from Dead Rose Core." : status.detail}</p><div className="mt-8">{!failed && <Progress />}</div>{failure && <p role="alert" className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-[13px] leading-5">{failure}</p>}{failed && <InstallationLog />}{failed && <Button className="mt-6" variant="outline" onClick={retry}>Recheck disks</Button>}<p className="mt-6 text-xs text-muted-foreground">Do not power off the system while installation is running. Detailed logs are preserved for diagnostics.</p></div>;
 }
 
 function InstallComplete({ reboot }: { reboot: () => Promise<unknown> }) {

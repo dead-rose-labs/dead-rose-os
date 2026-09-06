@@ -35,6 +35,10 @@ impl OperationManager {
         }
     }
 
+    pub fn install_log(&self) -> Result<dead_rose_types::InstallerLog, String> {
+        crate::installer_log::read(&self.log_directory)
+    }
+
     pub fn install_status(&self) -> OperationStatus {
         self.install
             .lock()

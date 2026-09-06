@@ -42,3 +42,9 @@ export interface CoreResponse<T> {
   result: T | null;
   error: ApiError | null;
 }
+
+export interface InstallerLog {
+  text: string;
+  truncated: boolean;
+  redacted: boolean;
+}

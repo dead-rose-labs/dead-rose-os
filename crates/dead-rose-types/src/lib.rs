@@ -4,6 +4,13 @@ use serde_json::Value;
 pub const CORE_SOCKET_PATH: &str = "/run/dead-rose/core.sock";
 pub const STATE_DIRECTORY: &str = "/var/lib/dead-rose";
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct InstallerLog {
+    pub text: String,
+    pub truncated: bool,
+    pub redacted: bool,
+}
+
 /// Confirms a command was accepted; asynchronous completion is reported by status requests.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Acknowledgement {
@@ -96,6 +103,7 @@ pub enum Request {
         confirmation: String,
     },
     GetInstallStatus,
+    GetInstallLog,
     GetCurrentVersion,
     StartUpgrade {
         image: String,
