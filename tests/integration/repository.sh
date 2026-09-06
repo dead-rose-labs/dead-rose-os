@@ -38,6 +38,18 @@ grep -Fq 'Request::ReportUiReady' crates/dead-rose-core/src/main.rs
 grep -Fq 'SERIAL_CONSOLE_PATH: &str = "/dev/ttyS0"' crates/dead-rose-core/src/main.rs
 grep -Fq 'auto: false' os/cloud-config/default.yaml
 grep -Fq 'auto: true' os/cloud-config/ci-install.yaml
+# Check the actual file passed to kairos-agent manual-install. Keep the GUI disk
+# choice in --device; the shared contract must not preselect an installation disk.
+awk '
+  /^install:$/ { install = 1; next }
+  /^[^ #]/ { install = 0 }
+  install && /^  nousers: true$/ { nousers++ }
+  install && /^  (system|passive|recovery-system):$/ { image = $1; next }
+  install && /^    size: 5120$/ { sizes[image] = 1 }
+  install && /^  device:/ { device++ }
+  END { exit !(nousers == 1 && !device && sizes["system:"] && sizes["passive:"] && sizes["recovery-system:"]) }
+' os/rootfs/etc/dead-rose/install.yaml
+test "$(readlink os/rootfs/etc/kairos/00-dead-rose-install.yaml)" = ../dead-rose/install.yaml
 grep -Fq '/var/lib/dead-rose' os/cloud-config/default.yaml
 grep -Fq 'kairos-io/kairos/.github/workflows/reusable-factory.yaml@911d4e3fef31ba9bf85923fc846470a0a3d68e2b' .github/workflows/os-build.yml
 grep -Fq 'dockerfile_path: os/Dockerfile' .github/workflows/os-build.yml
