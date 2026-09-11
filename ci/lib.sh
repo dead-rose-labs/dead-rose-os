@@ -19,11 +19,18 @@ export GIT_COMMIT GIT_SHORT_SHA SOURCE_DATE_EPOCH ISO_NAME
 export DEAD_ROSE_VERSIONS_FILE="$FACTORY_ROOT/versions.env"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
+stage_fail() {
+    local result=$?
+    local line=${1:-unknown}
+    printf 'failed (%s), line %s\n' "$result" "$line" > "$ARTIFACTS/status/$STAGE"
+    echo "ERROR: $STAGE failed at line $line (exit $result)" >&2
+    exit "$result"
+}
 stage_start() {
     STAGE=$1
     export STAGE
     printf 'running\n' > "$ARTIFACTS/status/$STAGE"
-    trap 'result=$?; printf "failed (%s), line %s\n" "$result" "$LINENO" > "$ARTIFACTS/status/$STAGE"; echo "ERROR: $STAGE failed at line $LINENO (exit $result)" >&2; exit "$result"' ERR
+    trap 'stage_fail "$LINENO"' ERR
 }
 stage_pass() { printf 'passed\n' > "$ARTIFACTS/status/$STAGE"; }
 require_arch() {
