@@ -1,0 +1,34 @@
+Window.SetBackgroundTopColor(0.043, 0.043, 0.055);
+Window.SetBackgroundBottomColor(0.043, 0.043, 0.055);
+logo.image = Image("logo.png");
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetX(Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
+logo.sprite.SetY(Window.GetHeight() / 2 - 130);
+label.image = Image.Text("DEAD ROSE", 0.95, 0.93, 0.94);
+label.sprite = Sprite(label.image);
+label.sprite.SetX(Window.GetWidth() / 2 - label.image.GetWidth() / 2);
+label.sprite.SetY(Window.GetHeight() / 2 + 20);
+status.sprite = Sprite();
+status.sprite.SetY(Window.GetHeight() / 2 + 65);
+phase = 0;
+fun refresh() {
+    global.phase += 0.03;
+    logo.sprite.SetOpacity(0.65 + 0.35 * Math.Sin(global.phase));
+}
+fun message(text) {
+    status.image = Image.Text(text, 0.8, 0.7, 0.75);
+    status.sprite.SetImage(status.image);
+    status.sprite.SetX(Window.GetWidth() / 2 - status.image.GetWidth() / 2);
+}
+fun password(prompt, bullets) {
+    stars = "";
+    for (i = 0; i < bullets; i++) stars += "*";
+    message(prompt + " " + stars);
+}
+fun question(prompt, entry) { message(prompt + " " + entry); }
+fun normal() { message(""); }
+Plymouth.SetRefreshFunction(refresh);
+Plymouth.SetDisplayMessageFunction(message);
+Plymouth.SetDisplayPasswordFunction(password);
+Plymouth.SetDisplayQuestionFunction(question);
+Plymouth.SetDisplayNormalFunction(normal);

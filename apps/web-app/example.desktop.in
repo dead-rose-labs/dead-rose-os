@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Example service
+Exec=dead-rose-web-app https://service.example/
+Icon=example-service
+Terminal=false
+Categories=Network;X-DeadRose-WebApp;
+# Template only: install with a real URL and an icon; never ship fake services.

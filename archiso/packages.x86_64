@@ -1,0 +1,87 @@
+# Base
+base
+linux
+linux-firmware
+sudo
+archlinux-keyring
+
+# Boot
+mkinitcpio
+mkinitcpio-archiso
+amd-ucode
+intel-ucode
+plymouth
+grub
+efibootmgr
+
+# Graphics
+mesa
+vulkan-radeon
+vulkan-intel
+xorg-xwayland
+xorg-server
+
+# KDE
+plasma-desktop
+plasma-workspace
+plasma-integration
+kwin
+sddm
+breeze
+breeze-gtk
+kde-gtk-config
+kscreen
+powerdevil
+polkit-kde-agent
+xdg-desktop-portal-kde
+qt6-wayland
+noto-fonts
+noto-fonts-emoji
+
+# Network
+networkmanager
+plasma-nm
+wpa_supplicant
+
+# Audio
+pipewire
+pipewire-alsa
+pipewire-pulse
+wireplumber
+plasma-pa
+sof-firmware
+
+# Bluetooth
+bluez
+bluez-utils
+bluedevil
+
+# Applications
+chromium
+dolphin
+konsole
+systemsettings
+xdg-utils
+dead-rose-config
+kdialog
+
+# Installer
+calamares
+rsync
+squashfs-tools
+arch-install-scripts
+cryptsetup
+lvm2
+
+# Filesystem
+btrfs-progs
+dosfstools
+e2fsprogs
+snapper
+
+# Development/debug
+nano
+less
+iproute2
+usbutils
+pciutils

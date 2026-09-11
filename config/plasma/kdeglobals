@@ -1,0 +1,15 @@
+[KDE]
+LookAndFeelPackage=org.deadrose.desktop
+SingleClick=false
+widgetStyle=Breeze
+
+[General]
+ColorScheme=DeadRose
+AccentColor=138,45,69
+font=Noto Sans,10,-1,5,50,0,0,0,0,0
+
+[Icons]
+Theme=deadrose
+
+[KDE Action Restrictions]
+run_command=true

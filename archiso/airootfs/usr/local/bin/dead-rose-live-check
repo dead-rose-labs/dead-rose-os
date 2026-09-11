@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap 'echo DEAD_ROSE_LIVE_FAILED; journalctl -b -n 100 --no-pager' ERR
+test -d /sys/firmware/efi
+for unit in graphical.target sddm.service NetworkManager.service; do
+    systemctl is-active --quiet "$unit"
+done
+test -f /usr/share/wayland-sessions/plasma.desktop
+# A bounded readiness probe: no service restarts or ignored failures.
+deadline=$((SECONDS + 150))
+until pgrep -u live -x plasmashell >/dev/null && pgrep -u live -x kwin_wayland >/dev/null; do
+    if (( SECONDS >= deadline )); then
+        echo DEAD_ROSE_BASE_FAILED
+        exit 1
+    fi
+    sleep 1
+done
+nm-online --quiet --timeout=60
+test -x /usr/bin/calamares
+test -s /etc/calamares/settings.conf
+test -s /usr/share/applications/install-dead-rose.desktop
+test -s /usr/share/wallpapers/DeadRose/contents/images/3840x2160.png
+test -s /usr/share/sddm/themes/deadrose/Main.qml
+test -s /usr/share/plasma/look-and-feel/org.deadrose.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+for module in partition users unpackfs initcpio bootloader; do
+    test -s "/usr/lib/calamares/modules/$module/module.desc"
+done
+echo DEAD_ROSE_LIVE_READY

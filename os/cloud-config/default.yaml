@@ -1,7 +1,0 @@
-#cloud-config
-install:
-  bind_mounts:
-    - /var/lib/dead-rose
-  auto: false
-  reboot: false
-  poweroff: false

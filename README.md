@@ -1,41 +1,22 @@
-# Dead Rose OS
+# Dead Rose OS 0.1.0
 
-Dead Rose OS is a personal Linux appliance and local control plane for a private homelab or server rack.
+Минимальный Arch Linux desktop: Plasma Wayland, Calamares, Btrfs,
+NetworkManager, PipeWire и собственное оформление Dead Rose.
+Архитектура — x86_64, загрузка — UEFI без Secure Boot.
 
-It combines Ubuntu 26.04, Kairos, systemd, Cage/greetd, Tauri, React, Rust, and SQLite around one product principle:
+**Статус: реализация подготовлена для первой сборки в GitHub Actions.
+Рабочий ISO и полная установка пока не подтверждены.**
 
-> OS as one application.
+На Arch Linux x86_64:
 
-Normal boot opens the full-screen Dead Rose graphical environment. There is no Ubuntu Desktop, GNOME, generic login screen, taskbar, terminal, or browser workflow.
-
-## Architecture
-
-Kairos owns installation, the immutable system lifecycle, Active/Passive slots, Recovery, and OCI upgrades. Dead Rose owns the installer experience, local authentication, persistent application state, control-plane UX, and narrow typed system operations.
-
-```text
-Ubuntu 26.04 → Kairos → systemd → Dead Rose Core → Unix socket → Tauri/React Shell
+```sh
+sudo pacman -Syu archiso python python-yaml mtools
+./scripts/build.sh
 ```
 
-The production image contains no Kubernetes provider.
+Результат: `out/dead-rose-os-0.1.0-x86_64.iso`.
+Workflow **Dead Rose ISO** собирает пакеты и ISO, проверяет образ, запускает
+QEMU/OVMF и публикует ISO только после успешного smoke test.
+Логи и screenshot доступны отдельным diagnostics artifact даже при ошибке.
 
-## Development
-
-```bash
-./dr doctor
-./dr build
-./dr image
-./dr test-image
-./dr iso
-./dr test-qemu
-```
-
-`./dr iso` produces:
-
-```text
-build/dead-rose-os-0.1.0-amd64.iso
-build/dead-rose-os-0.1.0-amd64.iso.sha256
-```
-
-GitHub builds use the pinned Kairos Factory reusable workflow from the Kairos monorepo. Factory builds `os/Dockerfile` once and uploads the OCI/ISO artifacts; Dead Rose then verifies that exact ISO with its own UEFI live, installation, installed-boot, and persistence tests.
-
-See [Build](docs/BUILD.md), [Testing](docs/TESTING.md), [Installation](docs/INSTALLATION.md), and [Updates](docs/UPDATES.md).
+[Архитектура](docs/architecture.md) · [Сборка](docs/build.md) · [Acceptance](docs/testing.md)

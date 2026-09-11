@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Dead Rose
+Comment=Dead Rose OS information
+Exec=dead-rose
+Icon=dead-rose
+Terminal=false
+Categories=System;

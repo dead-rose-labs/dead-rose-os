@@ -1,0 +1,8 @@
+{
+  "KPlugin": {
+    "Id": "deadrose", "Name": "Dead Rose", "Version": "0.1.0",
+    "Description": "Graphite surfaces and wine accents", "License": "Apache-2.0",
+    "Authors": [{"Name": "Dead Rose Labs"}]
+  },
+  "X-Plasma-API": "5.0"
+}

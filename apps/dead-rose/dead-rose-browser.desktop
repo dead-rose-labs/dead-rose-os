@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Browser
+Exec=chromium %U
+Icon=dead-rose-browser
+Terminal=false
+Categories=Utility;
+StartupWMClass=chromium
+StartupNotify=true

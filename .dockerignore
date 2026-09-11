@@ -1,8 +1,0 @@
-.git
-.agents
-node_modules
-target
-build
-dist
-*.iso
-*.qcow2

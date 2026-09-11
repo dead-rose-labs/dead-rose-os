@@ -1,0 +1,31 @@
+---
+componentName: deadrose
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 960px,640px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+strings:
+  productName: Dead Rose OS
+  shortProductName: Dead Rose
+  version: 0.1.0
+  shortVersion: '0.1'
+  versionedName: Dead Rose OS 0.1.0
+  shortVersionedName: Dead Rose 0.1
+  bootloaderEntryName: DeadRose
+  productUrl: https://github.com/dead-rose-labs/dead-rose-os
+  supportUrl: https://github.com/dead-rose-labs/dead-rose-os/issues
+  knownIssuesUrl: https://github.com/dead-rose-labs/dead-rose-os/issues
+images:
+  productIcon: logo.svg
+  productLogo: logo.svg
+  productWelcome: logo.svg
+style:
+  SidebarBackground: '#141216'
+  SidebarText: '#f5f2f4'
+  SidebarTextCurrent: '#ffffff'
+  SidebarBackgroundCurrent: '#8a2d45'
+slideshow: show.qml
+slideshowAPI: 2

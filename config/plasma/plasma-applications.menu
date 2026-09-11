@@ -1,0 +1,24 @@
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN" "http://www.freedesktop.org/standards/menu-spec/1.0/menu.dtd">
+<Menu>
+  <Name>Applications</Name>
+  <DefaultAppDirs/>
+  <DefaultDirectoryDirs/>
+  <Include>
+    <Filename>dead-rose.desktop</Filename>
+    <Filename>dead-rose-browser.desktop</Filename>
+    <Filename>dead-rose-files.desktop</Filename>
+    <Filename>dead-rose-terminal.desktop</Filename>
+    <Filename>dead-rose-settings.desktop</Filename>
+    <Filename>install-dead-rose.desktop</Filename>
+    <Category>X-DeadRose-WebApp</Category>
+  </Include>
+  <Layout>
+    <Filename>dead-rose.desktop</Filename>
+    <Filename>dead-rose-browser.desktop</Filename>
+    <Filename>dead-rose-files.desktop</Filename>
+    <Filename>dead-rose-terminal.desktop</Filename>
+    <Filename>dead-rose-settings.desktop</Filename>
+    <Filename>install-dead-rose.desktop</Filename>
+    <Merge type="files"/>
+  </Layout>
+</Menu>

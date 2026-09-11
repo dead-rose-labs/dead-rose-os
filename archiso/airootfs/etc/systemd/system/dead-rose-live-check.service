@@ -1,0 +1,15 @@
+[Unit]
+Description=Dead Rose live acceptance instrumentation
+After=graphical.target NetworkManager.service sddm.service
+ConditionVirtualization=qemu
+ConditionPathExists=/run/archiso/bootmnt
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dead-rose-live-check
+TimeoutStartSec=240
+StandardOutput=tty
+TTYPath=/dev/ttyS0
+
+[Install]
+WantedBy=graphical.target

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Files
+Exec=dolphin %U
+Icon=dead-rose-files
+Terminal=false
+Categories=Utility;
+StartupWMClass=dolphin
+StartupNotify=true

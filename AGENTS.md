@@ -1,12 +1,12 @@
-# Dead Rose OS agent rules
+# Dead Rose OS
 
-1. Dead Rose OS 0.1 is Ubuntu 26.04 BYOI transformed by pinned `kairos-init`.
-2. Kairos owns install, immutable lifecycle, Active/Passive, Recovery, and OCI upgrades.
-3. Never add custom bootloader, partitioning, ISO assembly, A/B, or rollback code.
-4. React is presentation; privileged behavior belongs to typed Rust Core requests.
-5. Never expose generic shell or command execution.
-6. The graphical shell runs as the unprivileged `deadrose` account.
-7. Persistent product state belongs under `/var/lib/dead-rose` and must survive upgrades.
-8. Production installation must always require an explicit disk choice and `ERASE` confirmation.
-9. Pin build dependencies and run relevant frontend, Rust, image, and QEMU tests.
-10. Do not claim an appliance acceptance check passed unless it actually ran.
+- Target: Arch Linux x86_64, UEFI, KDE Plasma Wayland, Calamares, Archiso.
+- Use upstream components and supported configuration. No custom installer,
+  partitioner, bootloader, compositor, authentication, networking or update stack.
+- Keep root login locked and remove all live-only privileges from installed systems.
+- Keep explicit disk selection and Calamares confirmation; never auto-install to hardware.
+- Preserve upstream attribution. No AUR dependencies in the base image.
+- Pin external source revisions and GitHub Action SHAs. Do not disable package signatures.
+- Never claim ISO boot, installation or hardware acceptance without recorded evidence.
+- Per the current user instruction, run builds and tests in GitHub Actions,
+  not on this Mac. The user reviews Actions results after push.

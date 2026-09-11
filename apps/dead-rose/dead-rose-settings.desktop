@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+Exec=systemsettings
+Icon=dead-rose-settings
+Terminal=false
+Categories=Utility;
+StartupWMClass=systemsettings
+StartupNotify=true

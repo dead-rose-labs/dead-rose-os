@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Dead Rose
+Description=Dead Rose OS boot splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/deadrose
+ScriptFile=/usr/share/plymouth/themes/deadrose/deadrose.script

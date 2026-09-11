@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Exec=konsole
+Icon=dead-rose-terminal
+Terminal=false
+Categories=Utility;
+StartupWMClass=konsole
+StartupNotify=true

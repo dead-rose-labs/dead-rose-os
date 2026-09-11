@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+  <defs>
+    <radialGradient id="glow"><stop stop-color="#411c2b"/><stop offset="1" stop-color="#0b0b0e"/></radialGradient>
+    <linearGradient id="wine" x2="1" y2="1"><stop stop-color="#98354e"/><stop offset="1" stop-color="#451e2b"/></linearGradient>
+  </defs>
+  <rect width="3840" height="2160" fill="#0b0b0e"/>
+  <ellipse cx="1920" cy="1050" rx="1700" ry="1400" fill="url(#glow)" opacity=".6"/>
+  <g transform="translate(1785 660)" fill="url(#wine)">
+    <rect width="68" height="450" rx="34"/>
+    <rect x="150" width="68" height="450" rx="34" opacity=".45"/>
+  </g>
+  <text x="1920" y="1290" text-anchor="middle" fill="#e5dee1" font-family="sans-serif" font-size="48" letter-spacing="20">DEAD ROSE</text>
+  <text x="1920" y="1380" text-anchor="middle" fill="#87777f" font-family="sans-serif" font-size="22" letter-spacing="7">A QUIET PLACE TO BUILD</text>
+</svg>

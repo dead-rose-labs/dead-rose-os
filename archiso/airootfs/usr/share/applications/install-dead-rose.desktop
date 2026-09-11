@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Install Dead Rose
+Comment=Install Dead Rose OS on your computer
+Exec=/usr/local/bin/install-dead-rose
+Icon=dead-rose-install
+Terminal=false
+Categories=System;
+StartupNotify=true

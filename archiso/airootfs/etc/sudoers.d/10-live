@@ -1,0 +1,2 @@
+# Live environment only. Must be removed by Calamares before installation ends.
+live ALL=(ALL:ALL) NOPASSWD: ALL

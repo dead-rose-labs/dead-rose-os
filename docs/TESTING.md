@@ -1,29 +1,85 @@
-# Testing
+# Проверки и acceptance
 
-`./dr test` runs frontend ESLint, TypeScript, Vitest, Rust formatting, Clippy with warnings denied, and Rust tests.
+## Зафиксированный статус
 
-`tests/integration/repository.sh` checks the pinned Ubuntu/Kairos/AuroraBoot architecture, production install safety, persistence configuration, removal of legacy branding/build systems, and absence of shell interpolation in privileged Rust commands. The image build itself runs `tests/integration/image-sanity.sh` before Factory can turn the OCI filesystem into an ISO; this validates greetd session roles, `graphical.target`, GPU access, locale, executables, and dynamic dependencies.
+Реализация подготовлена к первому push. **Сборка ISO, QEMU boot, установка,
+визуальная acceptance и реальное оборудование пока не подтверждены.**
 
-Appliance acceptance requires Linux amd64 Docker plus QEMU/OVMF:
+До изменения указаний пользователя был выполнен только source check раннего
+базового профиля: 55 explicit packages, Bash syntax и основные service links.
+Он не относится к последующей полной реализации. После просьбы пользователя
+локальные тесты прекращены; дальнейшие результаты проверяет пользователь в Actions.
 
-```bash
-./dr image
-./dr test-image
-./dr iso
-./dr test-qemu live
-./dr test-install
+Фазы ТЗ остаются acceptance gates, а не отметками о написании кода:
+
+| Фаза | Реализация | Подтверждение |
+| --- | --- | --- |
+| 1. Архитектура | Legacy заменён Archiso-проектом | Code review |
+| 2. Live | UEFI, Plasma, SDDM, сеть | Ожидается Actions + визуальный просмотр |
+| 3. Installer | Upstream Calamares, Btrfs, GRUB | Полная установка не пройдена |
+| 4. Branding | Темы, wallpaper, dock, icons | Визуально не проверено |
+| 5. Curated apps | Минимальное меню, upstream apps | Нужна проверка desktop |
+| 6. CI | Build, validation, QEMU, artifacts | Ожидается первый запуск |
+| 7. Acceptance | Процедура ниже | Не пройдена |
+
+## Автоматические проверки в CI
+
+```sh
+./scripts/test.sh --source
+./scripts/test.sh --iso out/dead-rose-os-0.1.0-x86_64.iso
+python3 scripts/qemu-smoke.py out/dead-rose-os-0.1.0-x86_64.iso
 ```
 
-The production ISO test waits for the real `DEAD_ROSE_UI_READY` marker. After the frontend has successfully obtained its application state, Dead Rose Shell sends the narrow typed `report_ui_ready` acknowledgement over the existing Unix socket. Dead Rose Core retains normal systemd journal output and best-effort mirrors only its Core/UI readiness events to the standard PC serial console. This keeps the signal observable on QEMU ttyS0 even when the ISO selects tty1 as its primary console and Cage owns VT1. In GitHub Actions, acceptance downloads exactly one Factory ISO and verifies its Factory-generated checksum before QEMU starts. It never rebuilds the image or ISO.
+Source checks: syntax Bash/Python, package names и дубликаты, обязательные файлы,
+Archiso profile invariants, official repositories, service links, XML/SVG/JSON/YAML,
+installer ordering, root lock policy, Btrfs и pinned Action SHAs.
+Сборка Calamares дополнительно проверяет custom module configs его upstream schemas
+и наличие обязательных compiled modules. Реальную валидность профиля проверяет mkarchiso.
 
-For automated installation, QEMU attaches `os/cloud-config/ci-install.yaml` as a temporary `cidata` config-drive alongside the unchanged production ISO. The config selects only the test VM's dedicated `/dev/vda` and explicitly uses Kairos' `install.nousers` policy. During CI live boot, Kairos's initramfs stage writes runtime systemd condition drop-ins for greetd and Kairos WebUI, leaving the official `kairos-installer.service` as the installation owner. These `/run` drop-ins are not recreated on installed boots. Installation ends through Kairos's configured poweroff.
+ISO checks: файл, volume label, El Torito EFI, kernel/initramfs/SquashFS и
+BOOTX64.EFI/loader entry в настоящей appended GPT ESP. Нужны xorriso, mtools,
+sfdisk, Python и PyYAML. Отсутствующий ISO — ошибка, а не skipped success.
 
-QEMU then boots the same disk without either ISO. A CI-only runtime oneshot waits for `DEAD_ROSE_UI_READY mode=first_boot`, writes a random nonce, boot ID and known payload into a SQLite database under `/var/lib/dead-rose`, commits durably, and requests `systemctl poweroff`. The second installed boot must again reach UI readiness and validate database integrity, payload, a different boot ID and the original nonce. The host checks both readiness and matching state markers and waits for guest shutdown on each boot; host termination is only failure cleanup. This verifies the CI witness, not administrator creation or a full production database migration. The downloadable production ISO still contains `auto: false`; this fixture does not change the product manual-install path.
+QEMU запускает неизменённый ISO с OVMF, TCG, virtio graphics/network, 4 GiB RAM
+и без writable install disk. Live-only oneshot включается только в QEMU:
+проверяет UEFI, каждую systemd unit отдельно, Wayland session file, процессы
+KWin/Plasma, подключение NetworkManager, Calamares/modules и assets.
+Только после этого выводится `DEAD_ROSE_LIVE_READY` в serial port.
+До marker отведён timeout; ранний выход QEMU и guest failure проваливают тест.
+Сохраняются serial log, QEMU log, screenshot PPM и JSON result.
 
-Run `python3 tests/integration/test-ci-install.py` for local checks of persistence verification and failure behavior. These checks do not substitute for Factory/QEMU acceptance.
+Marker **не доказывает** открытие installer UI, успешную установку, визуальное
+качество или поддержку оборудования. Screenshot надо посмотреть вручную.
+При невозможности screenshot записывается отдельная диагностическая ошибка;
+критерий smoke — readiness marker. Не ослаблять критерии ради зелёного CI.
 
-On every acceptance failure, serial console logs are uploaded as `dead-rose-qemu-diagnostics-<sha>`. Time passing alone is never treated as success.
+## QEMU / VirtualBox installation acceptance
 
-AuroraBoot's amd64 live-media template uses `nomodeset`. The image explicitly enables KMS only for the `virtio_gpu` device used by QEMU acceptance; it does not force software rendering or alter physical GPU drivers.
+VM: x86_64, UEFI/OVMF, Secure Boot off, 4 CPU, 6 GiB RAM,
+новый пустой виртуальный диск 40 GiB. Не подключать физические диски.
 
-Upgrade acceptance requires two published, pinned OCI test versions. Run the Core `StartUpgrade` request against the second approved GHCR tag, reboot, verify `/etc/kairos-release`, Core/UI readiness, version change, and the unchanged SQLite state. This test must not be reported as passed unless those images were actually published and exercised.
+1. Загрузить ISO. Проверить Plymouth и появление live Plasma Wayland desktop.
+2. Проверить dock, меню, Browser, Files, Terminal, Settings, network, audio и TTY.
+3. Запустить Install Dead Rose; проверить язык, keyboard, timezone и видимость диска.
+4. Явно выбрать тестовый диск и Btrfs, создать пользователя и подтвердить установку.
+5. Дождаться успешного завершения без ручных shell-команд.
+6. Выключить VM, отключить ISO, загрузить установленный диск.
+7. Проверить Dead Rose SDDM, пароль пользователя и Plasma Wayland.
+8. Проверить wallpaper, colors, iconography, dock и все основные приложения.
+9. Проверить sudo; live account, installer и беспарольный live sudo должны отсутствовать.
+10. Проверить network, reboot и создание второго пользователя с теми же desktop defaults.
+11. Повторить cold boot. Отдельно проверить manual partitioning и LUKS1, если они
+    будут объявляться поддерживаемыми в release notes.
+
+Диагностика: `journalctl -b`, `systemctl --failed`, `nmcli`, `ip`, `lsblk`,
+`findmnt`, `pacman -Q`, Calamares log. В live debug entry kernel/systemd logs
+выводятся на console. В установленной системе можно убрать `quiet splash` через GRUB editor.
+
+## Реальное оборудование
+
+Повторить весь installation flow на выделенном тестовом x86_64 UEFI компьютере.
+Записать ISO SHA-256, commit, CPU/GPU, firmware, накопитель, Wi-Fi/Bluetooth,
+звук, suspend/resume, подключение внешнего монитора и результаты reboot.
+Известные проблемы фиксировать с логами; не объявлять hardware acceptance по VM.
+
+Definition of Done достигнут только после успешного полного flow из ТЗ.

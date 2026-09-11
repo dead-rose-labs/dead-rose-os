@@ -1,0 +1,13 @@
+[SddmGreeterTheme]
+Name=Dead Rose
+Description=Dead Rose OS login
+Author=Dead Rose Labs
+Copyright=Copyright 2026 Dead Rose Labs
+License=Apache-2.0
+Type=sddm-theme
+Version=0.1.0
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=deadrose
+Theme-API=2.0
+QtVersion=6

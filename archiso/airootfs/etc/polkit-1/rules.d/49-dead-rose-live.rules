@@ -1,0 +1,8 @@
+// Only the local active live user may launch the upstream installer without
+// a password. Removed from the installed system by Calamares.
+polkit.addRule(function(action, subject) {
+    if (action.id === "com.github.calamares.calamares.pkexec.run" &&
+        subject.user === "live" && subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});

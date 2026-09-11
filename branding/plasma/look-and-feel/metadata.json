@@ -1,0 +1,12 @@
+{
+  "KPlugin": {
+    "Id": "org.deadrose.desktop",
+    "Name": "Dead Rose",
+    "Description": "Dead Rose OS desktop",
+    "Version": "0.1.0",
+    "License": "Apache-2.0",
+    "Authors": [{"Name": "Dead Rose Labs"}]
+  },
+  "KPackageStructure": "Plasma/LookAndFeel",
+  "X-Plasma-APIVersion": "2"
+}

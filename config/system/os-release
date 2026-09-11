@@ -1,0 +1,11 @@
+NAME="Dead Rose OS"
+PRETTY_NAME="Dead Rose OS 0.1.0"
+ID=deadrose
+ID_LIKE=arch
+VERSION_ID="0.1.0"
+BUILD_ID=rolling
+ANSI_COLOR="38;2;138;45;69"
+HOME_URL="https://github.com/dead-rose-labs/dead-rose-os"
+SUPPORT_URL="https://github.com/dead-rose-labs/dead-rose-os/issues"
+BUG_REPORT_URL="https://github.com/dead-rose-labs/dead-rose-os/issues"
+LOGO=dead-rose

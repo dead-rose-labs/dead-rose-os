@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+Target = dead-rose-config
+
+[Action]
+Description = Applying Dead Rose OS identity
+When = PostTransaction
+Exec = /usr/bin/ln -sfn ../usr/share/dead-rose/os-release /etc/os-release

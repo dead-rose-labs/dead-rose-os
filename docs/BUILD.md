@@ -1,37 +1,47 @@
-# Build
+# Сборка
 
-Run `./dr doctor` first. A complete appliance build requires Docker with buildx. QEMU and OVMF are required for boot acceptance.
+Основной путь этой задачи — GitHub Actions. Push запускает workflow **Dead Rose ISO**:
+официальный закреплённый Arch OCI image → makepkg → mkarchiso → ISO validation →
+QEMU/OVMF → artifact. На этом Mac сборку и тесты не запускаем по указанию пользователя.
 
-```bash
-./dr build       # frontend and Rust lint, tests, and application builds
-./dr image       # dead-rose-os:0.1.0 (linux/amd64)
-./dr test-image  # Ubuntu/Kairos/runtime sanity checks
-./dr iso         # production AuroraBoot ISO and checksum
+## Одна команда на Arch Linux x86_64
+
+Нужны Arch Linux x86_64, root для mounts mkarchiso, интернет для пакетов,
+4 CPU, 8 GiB RAM и ориентировочно 30 GiB свободного пространства.
+
+```sh
+sudo pacman -Syu archiso python python-yaml mtools
+./scripts/build.sh
 ```
 
-All lifecycle tool versions are centralized in `versions.env`. The Ubuntu OS package layer uses the standard authenticated repositories from the official base image and APT's native `Acquire::Retries=5` policy. The image is transformed with the directly invoked pinned `kairos-init`; the ISO is emitted directly by AuroraBoot and is never patched afterward.
+Скрипт устанавливает build dependencies через pacman и создаёт системного
+пользователя `deadrose-builder` только в build environment. Предпочтительна
+выделенная VM или CI container. Результаты:
 
-## GitHub builds
+- `out/dead-rose-os-0.1.0-x86_64.iso`
+- `out/SHA256SUMS`
+- `out/packages.x86_64.txt`
 
-`.github/workflows/os-build.yml` is the single CI entry point. It first calls the reusable application checks in `.github/workflows/ci.yml`; only a successful CI result on `main` can continue to the full OS build through the official Kairos Factory reusable workflow in the `kairos-io/kairos` monorepo, pinned to a full commit SHA. Pull requests stop after CI. The archived `kairos-io/kairos-factory-action` repository is not used.
+Для повторной сборки требуется новая work directory: mkarchiso сохраняет markers
+выполненных шагов, поэтому повторное использование старого work опасно.
 
-Factory receives `os/Dockerfile`, `ubuntu:26.04`, the pinned versions from `versions.env`, the safe production cloud config, and the generic amd64 target. It builds and publishes an immutable `ci-<full-sha>` OCI tag, creates one ISO with pinned AuroraBoot, computes its checksum, and uploads it as a GitHub artifact. Release tags use an immutable `candidate-<full-sha>` OCI until acceptance passes.
-
-Trivy runs inside Factory in `report-only` mode. Grype runs immediately after Factory through the pinned `grype-report.yml` reusable workflow because the Factory-pinned Anchore action otherwise turns a Grype runtime/DB outage into a Factory failure before ISO generation. Critical findings and scanner failures remain explicit in the job summary and JSON artifact, while the report-only scan cannot suppress ISO generation or QEMU acceptance.
-
-The image keeps `graphical.target` as its canonical default. Kairos deliberately selects `multi-user.target` again in its live initramfs stage, so the same `greetd.service` is wanted by both targets. This preserves one session owner (`greetd → Cage → Dead Rose Shell`) and makes the graphical appliance session start in both live and installed Kairos boot paths.
-
-Local development continues to use the same Dockerfile and pins:
-
-```bash
-./dr image
-./dr iso
-./dr test-qemu
+```sh
+sudo DEAD_ROSE_WORK_DIR=/var/tmp/dead-rose-build-2 ./scripts/build.sh
 ```
 
-Artifacts:
+Work должен находиться на Linux filesystem с Unix permissions и mount support.
+Нативная сборка на macOS не поддерживается. Тонкая обёртка mkarchiso не заменяет
+его ISO builder. Артефакт является кандидатом на acceptance, а не автоматически релизом.
 
-```text
-build/dead-rose-os-0.1.0-amd64.iso
-build/dead-rose-os-0.1.0-amd64.iso.sha256
-```
+## Воспроизводимость и зависимости
+
+В Git закреплены конфигурации, Calamares revision/checksum и SHA Actions/OCI image.
+Arch repositories rolling-release: package versions разрешаются во время сборки
+и сохраняются в manifest. Это повторяемый build process, **не гарантия побитово
+одинакового ISO в разные дни**. Для release freeze следует закрепить официальный
+Arch Linux Archive snapshot и согласованные версии build tools; затем повторить acceptance.
+
+При ошибке сборки скачайте diagnostics artifact. Ошибки пакетов, schema validation,
+mkarchiso и QEMU завершают workflow неуспешно; они не замаскированы continue-on-error.
+ISO artifact публикуется только после smoke test. Full installation и hardware
+acceptance остаются отдельными обязательными проверками перед выпуском 0.1.0.

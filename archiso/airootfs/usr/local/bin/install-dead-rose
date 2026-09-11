@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ ! -d /sys/firmware/efi ]]; then
+    exec kdialog --error 'Dead Rose OS 0.1 requires UEFI boot.'
+fi
+# Upstream Polkit policy preserves DISPLAY/XAUTHORITY; use XWayland for root UI.
+exec pkexec /usr/bin/calamares -platform xcb

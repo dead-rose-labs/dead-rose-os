@@ -1,0 +1,13 @@
+[kdeglobals][KDE]
+widgetStyle=Breeze
+[kdeglobals][General]
+ColorScheme=DeadRose
+[kdeglobals][Icons]
+Theme=deadrose
+[plasmarc][Theme]
+name=deadrose
+[kwinrc][org.kde.kdecoration2]
+library=org.kde.breeze
+theme=Breeze
+[Wallpaper]
+Image=DeadRose

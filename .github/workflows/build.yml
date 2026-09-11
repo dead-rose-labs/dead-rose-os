@@ -1,0 +1,65 @@
+name: Dead Rose ISO
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Prepare QEMU and UEFI firmware
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ovmf
+          mkdir -p out artifacts
+
+      - name: Build Archiso and validate image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --privileged --platform linux/amd64 \
+            -v "$GITHUB_WORKSPACE:/project" -w /project \
+            ghcr.io/archlinux/archlinux@sha256:76149bbd2424be7c89ad57bcc1d8d9f9fb62cb55b163a1e0e08f2eade7e6f2a7 \
+            bash -euo pipefail -c '
+              pacman -Syu --noconfirm archiso python python-yaml python-jsonschema mtools
+              ./scripts/test.sh --source
+              DEAD_ROSE_WORK_DIR=/var/tmp/deadrose-build ./scripts/build.sh
+            ' 2>&1 | tee artifacts/build.log
+
+      - name: QEMU UEFI live desktop smoke test
+        run: python3 scripts/qemu-smoke.py out/dead-rose-os-0.1.0-x86_64.iso --output artifacts/qemu
+
+      - name: Upload build and boot evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dead-rose-diagnostics-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload validated ISO
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dead-rose-os-0.1.0-x86_64
+          path: |
+            out/dead-rose-os-0.1.0-x86_64.iso
+            out/SHA256SUMS
+            out/packages.x86_64.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
