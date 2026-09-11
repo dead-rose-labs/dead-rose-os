@@ -1,0 +1,16 @@
+[Unit]
+Description=Dead Rose CI live-session acceptance
+After=graphical.target NetworkManager.service sddm.service systemd-modules-load.service
+ConditionPathExists=/run/archiso/bootmnt
+ConditionPathExists=/sys/firmware/qemu_fw_cfg/by_name/opt/deadrose/ci/raw
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash /usr/local/bin/dead-rose-live-check
+TimeoutStartSec=240
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/ttyS0
+
+[Install]
+WantedBy=graphical.target

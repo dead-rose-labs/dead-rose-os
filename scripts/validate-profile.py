@@ -30,12 +30,12 @@ require(all(re.fullmatch(r'[a-z0-9][a-z0-9@+_.-]*', p) for p in packages), 'Inva
 required = {'base', 'linux', 'mkinitcpio', 'mkinitcpio-archiso', 'plasma-desktop',
             'plasma-workspace', 'kwin', 'sddm', 'networkmanager', 'chromium',
             'dolphin', 'konsole', 'systemsettings', 'pipewire', 'wireplumber', 'btrfs-progs',
-            'calamares', 'dead-rose-config', 'plymouth', 'grub'}
+            'calamares', 'dead-rose-config', 'dead-rose-calamares-config', 'plymouth', 'grub'}
 require(required <= set(packages), f'Missing packages: {required - set(packages)}')
 require(not {'plasma-meta', 'kde-applications-meta', 'cage', 'greetd'} & set(packages), 'Forbidden base packages')
 config = (profile / 'profiledef.sh').read_text()
 require('bootmodes=(\'uefi.systemd-boot\')' in config, 'Expected UEFI systemd-boot profile')
-require(f'iso_version="{(root / "VERSION").read_text().strip()}"' in config, 'Version mismatch')
+require('DEAD_ROSE_ISO_VERSION' in config, 'Profile must consume factory version + commit')
 pacman = (profile / 'pacman.conf').read_text()
 require(re.findall(r'^\[([^]]+)\]', pacman, re.M) == ['options', 'core', 'extra'], 'Unexpected package repository')
 require('SigLevel = Required DatabaseOptional' in pacman, 'Package signature verification required')
@@ -73,8 +73,8 @@ require(modules['users']['doAutologin'] is False, 'Installed autologin must defa
 require(modules['partition']['initialPartitioningChoice'] == 'none', 'Disk action must require explicit choice')
 require(modules['partition']['defaultFileSystemType'] == 'btrfs', 'Btrfs must be default')
 require(modules['packages']['update_db'] is False, 'Offline install must not require package refresh')
-workflow_text = (root / '.github/workflows/build.yml').read_text()
+workflow_text = (root / '.github/workflows/factory.yml').read_text()
 for action in re.findall(r'uses:\s*(\S+)', workflow_text):
-    require(re.fullmatch(r'[\w-]+/[\w-]+@[0-9a-f]{40}', action), f'Action must use commit SHA: {action}')
+    require(action == './.github/workflows/arch-stage.yml' or re.fullmatch(r'[\w-]+/[\w-]+@[0-9a-f]{40}', action), f'Action must use commit SHA: {action}')
 yaml.safe_load(workflow_text)
 print(f'Profile source checks passed ({len(packages)} explicit packages).')

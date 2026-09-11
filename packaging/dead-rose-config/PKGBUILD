@@ -1,15 +1,17 @@
+source "${DEAD_ROSE_VERSIONS_FILE:?Set DEAD_ROSE_VERSIONS_FILE to versions.env}"
 pkgname=dead-rose-config
-pkgver=0.1.0
+pkgver=$DEAD_ROSE_VERSION
 pkgrel=1
 pkgdesc='Dead Rose OS artwork, Plasma defaults and desktop entry points'
 arch=('any')
 url='https://github.com/dead-rose-labs/dead-rose-os'
 license=('Apache-2.0')
+options=('!debug')
 depends=('plasma-desktop' 'sddm' 'plymouth' 'kdialog' 'python' 'chromium')
 makedepends=('librsvg' 'noto-fonts')
 source=('deadrose-assets.tar')
 # Local source archive made from this checkout; never downloaded from a URL.
-sha256sums=('SKIP')
+sha256sums=("${DESKTOP_ASSETS_SHA256:?Local source checksum must be supplied by ci/build-packages.sh}")
 
 build() {
     rsvg-convert -w 3840 -h 2160 branding/wallpapers/dead-rose.svg -o wallpaper.png
@@ -22,7 +24,7 @@ package() {
         "$share/plasma/look-and-feel/org.deadrose.desktop" "$share/plasma/desktoptheme/deadrose" \
         "$share/icons/deadrose" "$share/wallpapers/DeadRose/contents/images" \
         "$share/sddm/themes/deadrose" "$share/plymouth/themes/deadrose" \
-        "$share/calamares/branding/deadrose" "$share/applications" \
+        "$share/applications" \
         "$etc/skel/.config/menus" "$etc/sddm.conf.d" "$etc/plymouth" "$pkgdir/usr/bin" \
         "$share/libalpm/hooks" "$share/licenses/$pkgname"
     cp -r branding/plasma/look-and-feel/. "$share/plasma/look-and-feel/org.deadrose.desktop/"
@@ -30,7 +32,6 @@ package() {
     cp -r branding/icons/. "$share/icons/deadrose/"
     cp -r branding/sddm/. "$share/sddm/themes/deadrose/"
     cp -r branding/plymouth/. "$share/plymouth/themes/deadrose/"
-    cp -r branding/calamares/. "$share/calamares/branding/deadrose/"
     install -m644 logo.png "$share/plymouth/themes/deadrose/"
     install -m644 wallpaper.png "$share/wallpapers/DeadRose/contents/images/3840x2160.png"
     install -m644 branding/wallpapers/metadata.json "$share/wallpapers/DeadRose/"

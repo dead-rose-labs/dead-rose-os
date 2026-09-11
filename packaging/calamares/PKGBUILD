@@ -1,31 +1,23 @@
 # Upstream release, built locally; no AUR or third-party binary repository.
+source "${DEAD_ROSE_VERSIONS_FILE:?Set DEAD_ROSE_VERSIONS_FILE to versions.env}"
 pkgname=calamares
-pkgver=3.3.14
+pkgver=$CALAMARES_VERSION
 pkgrel=1
 pkgdesc='Distribution-independent installer configured for Dead Rose OS'
 arch=('x86_64')
 url='https://calamares.io/'
 license=('GPL-3.0-or-later')
+options=('!debug')
 depends=('boost-libs' 'icu' 'kconfig' 'kcoreaddons' 'kcrash' 'kiconthemes'
          'kio' 'kpmcore' 'libpwquality' 'polkit-qt6' 'python' 'python-yaml'
          'qt6-base' 'qt6-declarative' 'qt6-svg' 'yaml-cpp' 'rsync'
          'squashfs-tools' 'parted' 'gptfdisk' 'qt6-5compat')
 makedepends=('cmake' 'ninja' 'extra-cmake-modules' 'boost' 'qt6-tools' 'python-jsonschema')
-_revision=21ea803527735cfaf54fa6059e71d1ef65004864
-source=("calamares-${_revision}.tar.gz::https://codeload.github.com/calamares/calamares/tar.gz/${_revision}"
-        'deadrose-config.tar')
-sha256sums=('59de9c212472a0e80847e71db1c01c7d86d35b341f4cb0fad58a09724fcf3c77' 'SKIP')
+_revision=$CALAMARES_COMMIT
+source=("calamares-${_revision}.tar.gz::https://codeload.github.com/calamares/calamares/tar.gz/${_revision}")
+sha256sums=("$CALAMARES_SHA256")
 
 build() {
-    local config schema name
-    for config in "$srcdir/calamares/modules/"*.conf; do
-        name=${config##*/}; name=${name%.conf}
-        [[ $name != shellprocess-* ]] || name=shellprocess
-        schema="$srcdir/calamares-$_revision/src/modules/$name/$name.schema.yaml"
-        if [[ -f $schema ]]; then
-            python "$srcdir/calamares-$_revision/ci/configvalidator.py" "$schema" "$config"
-        fi
-    done
     # Upstream's supported Boost.Python backend avoids the bundled pybind11 2.11
     # dependency on obsolete Python internals. No Calamares source patches.
     local module skip=''
@@ -39,16 +31,13 @@ build() {
     cmake -S "calamares-$_revision" -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_INSTALL_LIBDIR=lib -DWITH_QT6=ON -DWITH_PYTHON=ON \
-        -DWITH_PYBIND11=OFF -DINSTALL_CONFIG=ON -DINSTALL_POLKIT=ON \
+        -DWITH_PYBIND11=OFF -DINSTALL_CONFIG=OFF -DINSTALL_POLKIT=ON \
         -DBUILD_TESTING=OFF -DSKIP_MODULES="$skip"
     cmake --build build --parallel 2
 }
 
 package() {
     DESTDIR="$pkgdir" cmake --install build
-    install -dm755 "$pkgdir/etc/calamares/modules"
-    install -m644 calamares/settings.conf "$pkgdir/etc/calamares/settings.conf"
-    install -m644 calamares/modules/*.conf "$pkgdir/etc/calamares/modules/"
     # Fail packaging when CMake silently omitted a required module.
     local module
     for module in welcome partition users unpackfs initcpio bootloader packages shellprocess; do

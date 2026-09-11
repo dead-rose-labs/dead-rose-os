@@ -25,33 +25,37 @@
 ## Автоматические проверки в CI
 
 ```sh
-./scripts/test.sh --source
-./scripts/test.sh --iso out/dead-rose-os-0.1.0-x86_64.iso
-python3 scripts/qemu-smoke.py out/dead-rose-os-0.1.0-x86_64.iso
+./dr factory
 ```
 
-Source checks: syntax Bash/Python, package names и дубликаты, обязательные файлы,
+Preflight checks: syntax Bash/Python, package names и дубликаты, обязательные файлы,
 Archiso profile invariants, official repositories, service links, XML/SVG/JSON/YAML,
-installer ordering, root lock policy, Btrfs и pinned Action SHAs.
-Сборка Calamares дополнительно проверяет custom module configs его upstream schemas
-и наличие обязательных compiled modules. Реальную валидность профиля проверяет mkarchiso.
+installer ordering, root lock policy, Btrfs, pinned Action SHAs и отсутствие
+floating Arch container refs.
+
+Calamares schema stage скачивает только закреплённый source archive, проверяет
+SHA-256 и запускает upstream `ci/configvalidator.py` для каждого configured module
+с upstream schema. У Calamares 3.3.14 нет `settings.schema.yaml`; `settings.conf`
+проверяется как YAML и как набор ссылок на существующие upstream modules/instances.
+Это ограничение нельзя закрывать чужой schema из другой версии.
 
 ISO checks: файл, volume label, El Torito EFI, kernel/initramfs/SquashFS и
 BOOTX64.EFI/loader entry в настоящей appended GPT ESP. Нужны xorriso, mtools,
 sfdisk, Python и PyYAML. Отсутствующий ISO — ошибка, а не skipped success.
 
-QEMU запускает неизменённый ISO с OVMF, TCG, virtio graphics/network, 4 GiB RAM
-и без writable install disk. Live-only oneshot включается только в QEMU:
-проверяет UEFI, каждую systemd unit отдельно, Wayland session file, процессы
-KWin/Plasma, подключение NetworkManager, Calamares/modules и assets.
-Только после этого выводится `DEAD_ROSE_LIVE_READY` в serial port.
-До marker отведён timeout; ранний выход QEMU и guest failure проваливают тест.
+QEMU запускает неизменённый ISO с OVMF, KVM при доступном `/dev/kvm` или TCG,
+virtio graphics/network, 4 GiB RAM и без writable install disk. Live-only oneshot
+включается только через CI `fw_cfg`: проверяет UEFI, systemd graphical target,
+NetworkManager, SDDM, Wayland session, процессы KWin/Plasma, Calamares/modules
+и assets. Успехом считаются три serial markers: `DEAD_ROSE_LIVE_READY`,
+`DEAD_ROSE_SDDM_READY`, `DEAD_ROSE_PLASMA_READY`.
+До markers отведён timeout; ранний выход QEMU и guest failure проваливают тест.
 Сохраняются serial log, QEMU log, screenshot PPM и JSON result.
 
 Marker **не доказывает** открытие installer UI, успешную установку, визуальное
 качество или поддержку оборудования. Screenshot надо посмотреть вручную.
 При невозможности screenshot записывается отдельная диагностическая ошибка;
-критерий smoke — readiness marker. Не ослаблять критерии ради зелёного CI.
+критерий smoke — все три readiness markers. Не ослаблять критерии ради зелёного CI.
 
 ## QEMU / VirtualBox installation acceptance
 

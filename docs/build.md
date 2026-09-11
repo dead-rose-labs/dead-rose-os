@@ -1,32 +1,34 @@
 # Сборка
 
-Основной путь этой задачи — GitHub Actions. Push запускает workflow **Dead Rose ISO**:
-официальный закреплённый Arch OCI image → makepkg → mkarchiso → ISO validation →
-QEMU/OVMF → artifact. На этом Mac сборку и тесты не запускаем по указанию пользователя.
+Основной путь этой задачи — GitHub Actions. Push запускает workflow **Factory**:
+официальный закреплённый Arch OCI image → preflight → pinned Calamares schema →
+makepkg → mkarchiso → ISO inspection → QEMU/OVMF live session → accepted artifact.
+На этом Mac сборку и тесты не запускаем по указанию пользователя.
 
-## Одна команда на Arch Linux x86_64
+## Одна команда на Linux x86_64
 
-Нужны Arch Linux x86_64, root для mounts mkarchiso, интернет для пакетов,
+Нужны Linux x86_64, Docker, QEMU/OVMF, интернет для snapshot packages,
 4 CPU, 8 GiB RAM и ориентировочно 30 GiB свободного пространства.
 
 ```sh
-sudo pacman -Syu archiso python python-yaml mtools
-./scripts/build.sh
+./dr factory
 ```
 
-Скрипт устанавливает build dependencies через pacman и создаёт системного
-пользователя `deadrose-builder` только в build environment. Предпочтительна
-выделенная VM или CI container. Результаты:
+`dr` запускает те же `ci/*.sh`, что и workflow. Arch stages выполняются внутри
+закреплённого OCI image из `versions.env`; QEMU smoke test запускается на host.
+Результаты:
 
-- `out/dead-rose-os-0.1.0-x86_64.iso`
-- `out/SHA256SUMS`
-- `out/packages.x86_64.txt`
+- `artifacts/dead-rose-os-0.1.0-g<shortsha>-x86_64.iso`
+- `artifacts/dead-rose-os-0.1.0-g<shortsha>-x86_64.iso.sha256`
+- `artifacts/manifest/build.json`
+- `artifacts/manifest/packages.txt`
+- `artifacts/logs/`
 
-Для повторной сборки требуется новая work directory: mkarchiso сохраняет markers
-выполненных шагов, поэтому повторное использование старого work опасно.
+Для повторной сборки требуется новая work directory: stages не переиспользуют
+старый `mkarchiso` work/rootfs/cache.
 
 ```sh
-sudo DEAD_ROSE_WORK_DIR=/var/tmp/dead-rose-build-2 ./scripts/build.sh
+FACTORY_WORK=/var/tmp/deadrose-factory-2 ./dr factory
 ```
 
 Work должен находиться на Linux filesystem с Unix permissions и mount support.
@@ -35,13 +37,13 @@ Work должен находиться на Linux filesystem с Unix permissions
 
 ## Воспроизводимость и зависимости
 
-В Git закреплены конфигурации, Calamares revision/checksum и SHA Actions/OCI image.
-Arch repositories rolling-release: package versions разрешаются во время сборки
-и сохраняются в manifest. Это повторяемый build process, **не гарантия побитово
-одинакового ISO в разные дни**. Для release freeze следует закрепить официальный
-Arch Linux Archive snapshot и согласованные версии build tools; затем повторить acceptance.
+В `versions.env` закреплены версия Dead Rose, официальный Arch OCI digest,
+дата Arch Linux Archive snapshot, Calamares commit и SHA-256 source archive.
+Build container и target package mirrors указывают на один daily snapshot.
+Версии resolved packages сохраняются в manifest вместе с ISO checksum.
 
 При ошибке сборки скачайте diagnostics artifact. Ошибки пакетов, schema validation,
 mkarchiso и QEMU завершают workflow неуспешно; они не замаскированы continue-on-error.
-ISO artifact публикуется только после smoke test. Full installation и hardware
-acceptance остаются отдельными обязательными проверками перед выпуском 0.1.0.
+Accepted ISO artifact публикуется только после live QEMU smoke test.
+Full installation и hardware acceptance остаются отдельными обязательными
+проверками перед выпуском 0.1.0.

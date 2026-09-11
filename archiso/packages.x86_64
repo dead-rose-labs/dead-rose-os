@@ -67,6 +67,7 @@ kdialog
 
 # Installer
 calamares
+dead-rose-calamares-config
 rsync
 squashfs-tools
 arch-install-scripts

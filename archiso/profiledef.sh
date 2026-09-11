@@ -2,10 +2,10 @@
 # Releng-derived profile. See docs/architecture.md for upstream references.
 # shellcheck disable=SC2034
 iso_name="dead-rose-os"
-iso_label="DEADROSE_010"
+iso_label="DEADROSE_${DEAD_ROSE_VERSION//./}"
 iso_publisher="Dead Rose Labs"
 iso_application="Dead Rose OS Live Desktop"
-iso_version="0.1.0"
+iso_version="${DEAD_ROSE_ISO_VERSION:?Run ci/build-iso.sh to set the version and commit}"
 install_dir="arch"
 arch="x86_64"
 buildmodes=('iso')

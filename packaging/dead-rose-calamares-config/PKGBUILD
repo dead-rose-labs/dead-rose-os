@@ -1,0 +1,18 @@
+# shellcheck disable=SC2034
+source "${DEAD_ROSE_VERSIONS_FILE:?Set DEAD_ROSE_VERSIONS_FILE to versions.env}"
+pkgname=dead-rose-calamares-config
+pkgver=$DEAD_ROSE_VERSION
+pkgrel=1
+pkgdesc='Dead Rose installer configuration and artwork'
+arch=('any')
+license=('Apache-2.0' 'CC0-1.0')
+options=('!debug')
+depends=('calamares')
+source=('deadrose-installer.tar')
+sha256sums=("${INSTALLER_ASSETS_SHA256:?Local source checksum must be supplied by ci/build-packages.sh}")
+package() {
+    install -dm755 "$pkgdir/etc/calamares/modules" "$pkgdir/etc/calamares/branding/deadrose"
+    install -m644 calamares/settings.conf "$pkgdir/etc/calamares/"
+    install -m644 calamares/modules/*.conf "$pkgdir/etc/calamares/modules/"
+    install -m644 branding/calamares/* "$pkgdir/etc/calamares/branding/deadrose/"
+}

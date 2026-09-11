@@ -2,6 +2,7 @@
 """Boot the unmodified ISO under OVMF, require live readiness, save evidence."""
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import socket
@@ -12,7 +13,7 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('iso', type=Path)
 parser.add_argument('--output', type=Path, default=Path('artifacts/qemu'))
-parser.add_argument('--timeout', type=int, default=600)
+parser.add_argument('--timeout', type=int, default=300)
 args = parser.parse_args()
 if not args.iso.is_file():
     parser.error('ISO does not exist')
@@ -32,19 +33,23 @@ shutil.copyfile(variables, output / 'OVMF_VARS.fd')
 
 with tempfile.TemporaryDirectory(prefix='deadrose-qmp-') as temp:
     qmp_path = str(Path(temp) / 'qmp.sock')
+    acceleration = 'kvm' if os.access('/dev/kvm', os.R_OK | os.W_OK) else 'tcg'
     command = [
-        'qemu-system-x86_64', '-machine', 'q35', '-accel', 'tcg', '-cpu', 'max',
+        'qemu-system-x86_64', '-machine', 'q35', '-accel', acceleration,
+        '-cpu', 'host' if acceleration == 'kvm' else 'max',
         '-smp', '2', '-m', '4096', '-boot', 'd',
         '-drive', f'if=pflash,format=raw,readonly=on,file={code}',
         '-drive', f'if=pflash,format=raw,file={output / "OVMF_VARS.fd"}',
         '-cdrom', str(args.iso.resolve()), '-device', 'virtio-vga',
         '-device', 'qemu-xhci', '-device', 'usb-tablet',
         '-nic', 'user,model=virtio-net-pci', '-display', 'none',
-        '-serial', f'file:{output / "serial.log"}',
+        '-serial', f'file:{output / "qemu-serial.log"}',
+        '-fw_cfg', 'name=opt/deadrose/ci,string=1',
         '-qmp', f'unix:{qmp_path},server=on,wait=off', '-no-reboot',
     ]
-    (output / 'command.json').write_text(json.dumps(command, indent=2))
+    (output / 'qemu-command.json').write_text(json.dumps(command, indent=2))
     success = False
+    markers = {name: False for name in ('DEAD_ROSE_LIVE_READY', 'DEAD_ROSE_SDDM_READY', 'DEAD_ROSE_PLASMA_READY')}
     reason = 'Timed out waiting for live desktop'
     with (output / 'qemu.log').open('w') as log:
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
@@ -54,12 +59,14 @@ with tempfile.TemporaryDirectory(prefix='deadrose-qmp-') as temp:
                 if process.poll() is not None:
                     reason = f'QEMU exited early ({process.returncode})'
                     break
-                serial = output / 'serial.log'
+                serial = output / 'qemu-serial.log'
                 text = serial.read_text(errors='replace') if serial.exists() else ''
                 if 'DEAD_ROSE_LIVE_FAILED' in text or 'DEAD_ROSE_BASE_FAILED' in text:
                     reason = 'Guest readiness check failed'
                     break
-                if 'DEAD_ROSE_LIVE_READY' in text:
+                for marker in markers:
+                    markers[marker] = marker in text.splitlines()
+                if all(markers.values()):
                     success = True
                     reason = 'UEFI live desktop readiness passed'
                     break
@@ -94,6 +101,6 @@ with tempfile.TemporaryDirectory(prefix='deadrose-qmp-') as temp:
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait()
-    (output / 'result.json').write_text(json.dumps({'passed': success, 'reason': reason}, indent=2))
+    (output / 'qemu-result.json').write_text(json.dumps({'passed': success, 'reason': reason, 'acceleration': acceleration, 'markers': markers}, indent=2))
     print(reason)
     raise SystemExit(0 if success else 1)

@@ -10,23 +10,27 @@ Linux, systemd, pacman, KWin, SDDM, Plymouth, NetworkManager и Calamares
 
 `archiso/` — releng-derived профиль: UEFI systemd-boot, SquashFS, штатные
 archiso hooks и preset mkinitcpio. BIOS, PXE и Secure Boot не включены.
-`scripts/build.sh` подготавливает профиль и вызывает mkarchiso.
+`ci/prepare-profile.py` подготавливает профиль, а `ci/build-iso.sh` вызывает
+`mkarchiso -v -r`. CI-only readiness instrumentation добавляется только на этапе
+staging профиля перед mkarchiso.
 
-Большинство пакетов поступают из подписанных официальных core/extra.
-Два локальных пакета собираются makepkg непривилегированным пользователем:
+Все Arch build и target packages поступают из подписанных official repositories
+через Arch Linux Archive daily snapshot, закреплённый в `versions.env`.
+Три локальных пакета собираются makepkg непривилегированным пользователем:
 
 - `calamares`: upstream 3.3.14, commit `21ea803527735cfaf54fa6059e71d1ef65004864`,
   SHA-256 архива закреплён в PKGBUILD. Используется поддерживаемый upstream
   Boost.Python backend вместо старого bundled pybind11. Патчей исходников нет.
+- `dead-rose-calamares-config`: `settings.conf`, module configs и Calamares branding.
 - `dead-rose-config`: SVG artwork, Global Theme, Plasma Style, color scheme,
-  иконки с Breeze fallback, SDDM, Plymouth, Calamares branding, desktop entries
-  и дефолты `/etc/skel/.config`.
+  иконки с Breeze fallback, SDDM, Plymouth, desktop entries и дефолты
+  `/etc/skel/.config`.
 
 AUR не используется. Build-only repository `deadrose-local` содержит только
 пакеты из текущего checkout; для него отдельно разрешены unsigned packages.
 Это исключение не применяется к Arch repositories и не переносится в target.
-Архивы локальных assets имеют `SKIP` в makepkg: они создаются из checkout,
-а не загружаются по сети. У внешнего Calamares-архива checksum обязателен.
+Архивы локальных assets создаются CI из текущего checkout и получают обязательный
+SHA-256 через environment. У внешнего Calamares-архива checksum обязателен.
 
 `/etc/os-release` указывает на собственный файл в `/usr/share/dead-rose` через
 pacman hook. Сохраняется `ID_LIKE=arch`; upstream `/usr/lib/os-release` не заменяется.

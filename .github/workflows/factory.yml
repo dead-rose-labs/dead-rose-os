@@ -1,0 +1,147 @@
+name: Factory
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: factory-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+jobs:
+  preflight:
+    name: Factory / Preflight
+    uses: ./.github/workflows/arch-stage.yml
+    with:
+      stage: preflight
+      timeout: 10
+  calamares-schema:
+    name: Factory / Calamares Schema
+    needs: preflight
+    uses: ./.github/workflows/arch-stage.yml
+    with:
+      stage: validate-calamares
+      timeout: 10
+  build-packages:
+    name: Factory / Packages
+    needs: calamares-schema
+    uses: ./.github/workflows/arch-stage.yml
+    with:
+      stage: build-packages
+      timeout: 45
+  build-iso:
+    name: Factory / ISO
+    needs: build-packages
+    uses: ./.github/workflows/arch-stage.yml
+    with:
+      stage: build-iso
+      timeout: 60
+      repository: true
+  inspect-iso:
+    name: Factory / Inspect
+    needs: build-iso
+    uses: ./.github/workflows/arch-stage.yml
+    with:
+      stage: inspect-iso
+      timeout: 10
+      image: true
+  boot-live:
+    name: Factory / UEFI Boot and Plasma
+    needs: [preflight, inspect-iso]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: factory-image-${{ github.sha }}
+          path: artifacts/
+      - run: ./ci/prepare-host.sh
+      - run: ./ci/boot-smoke.sh
+      - name: Record boot outcome
+        if: always()
+        env:
+          FACTORY_OUTCOME: ${{ job.status }}
+        run: ./ci/collect-logs.sh boot-live "$FACTORY_OUTCOME"
+      - name: Preserve boot evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: factory-diagnostics-boot-live-${{ github.sha }}
+          path: |
+            artifacts/logs/
+            artifacts/manifest/
+            artifacts/status/
+          if-no-files-found: error
+          retention-days: 14
+  artifact:
+    name: Factory / Artifact
+    needs: [preflight, boot-live]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: factory-image-${{ github.sha }}
+          path: artifacts/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: factory-diagnostics-*-${{ github.sha }}
+          path: artifacts/
+          merge-multiple: true
+      - run: ./ci/artifact.sh
+      - name: Publish accepted build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ needs.preflight.outputs.artifact_name }}
+          path: |
+            artifacts/${{ needs.preflight.outputs.iso_name }}
+            artifacts/${{ needs.preflight.outputs.iso_name }}.sha256
+            artifacts/manifest/
+            artifacts/logs/
+            artifacts/status/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - if: always()
+        env:
+          FACTORY_OUTCOME: ${{ job.status }}
+        run: ./ci/collect-logs.sh artifact "$FACTORY_OUTCOME"
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: factory-final-diagnostics-${{ github.sha }}
+          path: |
+            artifacts/logs/
+            artifacts/manifest/
+            artifacts/status/
+          if-no-files-found: error
+          retention-days: 14
+  release:
+    name: Factory / Release
+    needs: [preflight, artifact]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.preflight.outputs.artifact_name }}
+          path: artifacts/
+      - name: Publish versioned release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./ci/release.sh
