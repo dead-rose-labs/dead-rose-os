@@ -12,6 +12,7 @@ data = json.loads((Path(os.environ['ARTIFACTS']) / 'manifest/build.json').read_t
 assert data['git_commit'] == os.environ['GIT_COMMIT'], 'Release commit mismatch'
 assert data['dead_rose_version'] == os.environ['DEAD_ROSE_VERSION'], 'Release version mismatch'
 PY
+notes=''
 notes=$(mktemp)
 trap 'rm -f "$notes"' EXIT
 python3 "$FACTORY_ROOT/ci/summary.py" > "$notes"

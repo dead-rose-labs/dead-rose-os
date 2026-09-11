@@ -6,6 +6,7 @@ stage_start preflight
 exec > >(tee "$ARTIFACTS/logs/preflight.log") 2>&1
 cd "$FACTORY_ROOT"
 while IFS= read -r -d '' file; do
+    printf 'shellcheck %s\n' "$file"
     bash -n "$file"
     shellcheck --external-sources --source-path=SCRIPTDIR "$file"
 done < <(find ci scripts -type f -name '*.sh' -print0)

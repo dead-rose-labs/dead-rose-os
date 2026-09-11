@@ -15,10 +15,12 @@ ready=false
 while (( SECONDS < deadline )); do
     while read -r session; do
         [[ -n $session ]] || continue
-        if [[ $(loginctl show-session "$session" -p Name --value) == live &&
-              $(loginctl show-session "$session" -p Type --value) == wayland &&
-              $(loginctl show-session "$session" -p Active --value) == yes ]] &&
-              pgrep -u live -x plasmashell && pgrep -u live -x kwin_wayland; then
+        session_name=$(loginctl show-session "$session" -p Name --value)
+        session_type=$(loginctl show-session "$session" -p Type --value)
+        session_active=$(loginctl show-session "$session" -p Active --value)
+        if [[ $session_name == live && $session_type == wayland && $session_active == yes ]] &&
+              pgrep -u live -x plasmashell >/dev/null &&
+              pgrep -u live -x kwin_wayland >/dev/null; then
             ready=true
             break
         fi
