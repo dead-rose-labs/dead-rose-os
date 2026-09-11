@@ -33,8 +33,7 @@ for package in calamares dead-rose-calamares-config dead-rose-config; do
         DEAD_ROSE_VERSIONS_FILE="$DEAD_ROSE_VERSIONS_FILE" \
         INSTALLER_ASSETS_SHA256="$INSTALLER_ASSETS_SHA256" \
         DESKTOP_ASSETS_SHA256="$DESKTOP_ASSETS_SHA256" \
-        bash -c 'cd -- "$1"; makepkg --cleanbuild --noconfirm --log' \
-        bash "$destination/$package" 2>&1 | tee "$ARTIFACTS/logs/packages/$package.log"
+        bash "$FACTORY_ROOT/ci/makepkg-in-dir.sh" "$destination/$package" 2>&1 | tee "$ARTIFACTS/logs/packages/$package.log"
     files=("$destination/$package/"*.pkg.tar.zst)
     [[ ${#files[@]} == 1 && -s ${files[0]} ]] || die "Expected exactly one package for $package"
     pacman -Qp "${files[0]}" | tee -a "$ARTIFACTS/manifest/custom-packages.txt"

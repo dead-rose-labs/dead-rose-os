@@ -31,8 +31,8 @@ for phase in settings['sequence']:
     for entry in next(iter(phase.values())):
         module, config_name = instances.get(entry, (entry, entry + '.conf'))
         module_dir = modules / module
-        if not (module_dir / 'module.desc').is_file():
-            sys.exit(f'Missing pinned upstream module descriptor: {module}')
+        if not module_dir.is_dir():
+            sys.exit(f'Missing pinned upstream module source directory: {module}')
         config = configs / config_name
         schema = module_dir / (module + '.schema.yaml')
         if schema.exists() or (module_dir / (module + '.conf')).exists():

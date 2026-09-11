@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-[[ ${1:-} == factory ]] || { echo 'Usage: ./dr factory' >&2; exit 2; }
-for stage in preflight validate-calamares build-packages build-iso inspect-iso; do
-    "$repo/ci/run-arch.sh" "$stage"
-done
-"$repo/ci/prepare-host.sh"
-"$repo/ci/boot-smoke.sh"
-"$repo/ci/artifact.sh"
+case "${1:-}" in
+    check)
+        "$repo/ci/run-arch.sh" preflight
+        "$repo/ci/run-arch.sh" validate-calamares
+        echo 'Dead Rose checks: PASS'
+        ;;
+    factory)
+        for stage in preflight validate-calamares build-packages build-iso inspect-iso; do
+            "$repo/ci/run-arch.sh" "$stage"
+        done
+        "$repo/ci/prepare-host.sh"
+        "$repo/ci/boot-smoke.sh"
+        "$repo/ci/artifact.sh"
+        ;;
+    *)
+        echo 'Usage: ./dr {check|factory}' >&2
+        exit 2
+        ;;
+esac
