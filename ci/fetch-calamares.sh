@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=ci/lib.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib.sh"
 mkdir -p "$FACTORY_WORK/upstream"
 archive="$FACTORY_WORK/upstream/calamares-$CALAMARES_COMMIT.tar.gz"

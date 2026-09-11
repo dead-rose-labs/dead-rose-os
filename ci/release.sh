@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=ci/lib.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib.sh"
 [[ ${GITHUB_REF_TYPE:-} == tag && ${GITHUB_REF_NAME:-} == "v$DEAD_ROSE_VERSION" ]] || die 'Release requires a matching version tag'
 [[ $(cat "$ARTIFACTS/status/artifact") == passed ]] || die 'Factory acceptance has not passed'

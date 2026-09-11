@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=ci/lib.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib.sh"
 stage_start artifact
 for required in preflight calamares-schema build-packages build-iso inspect-iso boot-live; do

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=ci/lib.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib.sh"
 stage_start preflight
 exec > >(tee "$ARTIFACTS/logs/preflight.log") 2>&1

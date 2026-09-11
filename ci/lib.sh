@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 FACTORY_ROOT=${FACTORY_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}
 export FACTORY_ROOT
-# shellcheck source=../versions.env
+# shellcheck source=versions.env
 source "$FACTORY_ROOT/versions.env"
 export DEAD_ROSE_VERSION ARCH_SNAPSHOT CALAMARES_VERSION CALAMARES_COMMIT CALAMARES_SHA256
 export ARCH_CONTAINER_REPOSITORY ARCH_CONTAINER_DIGEST

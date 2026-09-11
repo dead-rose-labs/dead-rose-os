@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=ci/lib.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/lib.sh"
 stage=${1:?Usage: ci/run-arch.sh STAGE}
 case "$stage" in preflight|validate-calamares|build-packages|build-iso|inspect-iso|create-manifest) ;; *) die "Unsupported stage: $stage" ;; esac
