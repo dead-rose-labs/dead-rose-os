@@ -19,7 +19,7 @@ values = {}
 for line in (root / 'versions.env').read_text().splitlines():
     if not line or line.startswith('#'):
         continue
-    require(bool(re.fullmatch(r'[A-Z_]+=[A-Za-z0-9./:_-]+', line)), 'versions.env must contain literal assignments only')
+    require(bool(re.fullmatch(r'[A-Z0-9_]+=[A-Za-z0-9./:_-]+', line)), 'versions.env must contain literal assignments only')
     key, value = line.split('=', 1)
     require(key not in values, f'Duplicate version key: {key}')
     values[key] = value
