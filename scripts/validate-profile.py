@@ -20,6 +20,7 @@ for name in ('profiledef.sh', 'pacman.conf', 'packages.x86_64',
              'efiboot/loader/entries/01-dead-rose.conf',
              'airootfs/etc/mkinitcpio.d/linux.preset',
              'airootfs/etc/mkinitcpio.conf.d/archiso.conf',
+             'airootfs/etc/plymouth/plymouthd.conf',
              'airootfs/etc/sddm.conf.d/10-live.conf'):
     require((profile / name).is_file(), f'Missing profile file: {name}')
 

@@ -25,7 +25,7 @@ package() {
         "$share/icons/deadrose" "$share/wallpapers/DeadRose/contents/images" \
         "$share/sddm/themes/deadrose" "$share/plymouth/themes/deadrose" \
         "$share/applications" \
-        "$etc/skel/.config/menus" "$etc/sddm.conf.d" "$etc/plymouth" "$pkgdir/usr/bin" \
+        "$etc/skel/.config/menus" "$etc/sddm.conf.d" "$pkgdir/usr/bin" \
         "$share/libalpm/hooks" "$share/licenses/$pkgname"
     cp -r branding/plasma/look-and-feel/. "$share/plasma/look-and-feel/org.deadrose.desktop/"
     cp -r branding/plasma/desktoptheme/. "$share/plasma/desktoptheme/deadrose/"
@@ -44,7 +44,6 @@ package() {
     cat branding/colors/DeadRose.colors >> "$etc/skel/.config/kdeglobals"
     install -m644 config/plasma/DeadRose.profile "$share/konsole/"
     install -m644 config/system/sddm.conf "$etc/sddm.conf.d/20-deadrose.conf"
-    install -m644 config/system/plymouthd.conf "$etc/plymouth/plymouthd.conf"
     install -m644 config/system/os-release "$share/dead-rose/"
     install -m644 config/system/installed/* "$share/dead-rose/installed/"
     install -m644 config/system/identity.hook "$share/libalpm/hooks/99-dead-rose-identity.hook"
